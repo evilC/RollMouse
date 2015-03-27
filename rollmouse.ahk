@@ -4,7 +4,7 @@ rm := new RollMouse()
 class RollMouse {
 	Moving := 0
 	TimeOutFunc := 0
-	MOVE_BUFFER_SIZE := 50
+	MOVE_BUFFER_SIZE := 25
 	
 	__New(){
 		static RIDEV_INPUTSINK := 0x00000100
@@ -21,7 +21,6 @@ class RollMouse {
 		OnMessage(0x00FF, fn)
 		
 		this.TimeOutFunc := this.MouseStopped.Bind(this)
-		this.MoveFunc := this.MoveMouse.Bind(this)
 		this.InitHistory()
 	}
 	
@@ -33,12 +32,7 @@ class RollMouse {
 		static offsets := {x: (20+A_PtrSize*2), y: (24+A_PtrSize*2)}
 		
 		Critical
-
-		if (this.Moving){
-			fn := this.MoveFunc
-			SetTimer % fn, Off
-			this.Moving := 0
-		}
+		
 		DllCall("QueryPerformanceCounter",Int64P, t)
 		dt := t - last_t
 		last_t := t
@@ -57,8 +51,18 @@ class RollMouse {
 				}
 			}
 		}
-		fn := this.TimeOutFunc
-		SetTimer % fn, -20
+		if (this.Moving){
+			if (this.History.x[this.History.x.MaxIndex()].dt < 10000){
+				fn := this.MoveFunc
+				SetTimer % fn, Off
+				this.Moving := 0
+				;ToolTip % this.History.x[this.History.x.MaxIndex()].dt
+			}
+			;SoundBeep, 500, 100
+		} else {
+			fn := this.TimeOutFunc
+			SetTimer % fn, -20
+		}
 	}
 	
 	MouseStopped(){
@@ -69,6 +73,7 @@ class RollMouse {
 
 		for axis in axes {
 			last_vector := 0
+			c := 0
 			max := this.History[axis].MaxIndex()
 			; Check if movement ends abruptly, or tails off
 			
@@ -76,23 +81,35 @@ class RollMouse {
 			if (max = this.MOVE_BUFFER_SIZE){
 				; Loop through the last movements in the buffer...
 				Loop % max{
-					; Ignore changes of direction...
 					s[axis] .= this.History[axis][A_Index].dt ", "
+					; If direction changed, or delta time was too long, discount this gesture
 					if ( (last_vector != 0 && last_vector != this.History[axis][A_Index].sm ) || this.History[axis][A_Index].dt > 10000){
 						is_lifted[axis] := 0
 						break
 					}
+					c++
 					last_vector := this.History[axis][A_Index].sm
 				}
 			} else {
+				is_lifted[axis] := 0
+			}
+			
+			if (c < max){
 				is_lifted[axis] := 0
 			}
 		}
 		if (is_lifted.x || is_lifted.y){
 			if (!this.Moving){
 				this.Moving := 1
-				;fn := this.MoveFunc
-				;SetTimer % fn, 20
+				obj := is_lifted
+				for axis in axes {
+					obj[axis] *= this.History[axis][this.History[axis].MaxIndex()].sm
+				}
+				fn := this.MoveMouse.Bind(this, obj)
+				this.MoveFunc := fn
+				SetTimer % fn, 20
+				this.MoveMouse(is_lifted)
+				
 				out := "ROLL TRIGGERED (max x: " this.History.x.MaxIndex() ", y: " this.History.y.MaxIndex() ")`n"
 				if(is_lifted.x){
 					out .= "`nx: " s.x
@@ -100,17 +117,19 @@ class RollMouse {
 				if(is_lifted.y){
 					out .= "`ny: " s.y
 				}
-				ToolTip % out
+				;ToolTip % out
 			}
 		} else {
-			ToolTip
+			;ToolTip
 		}
 		this.InitHistory()
 	}
 	
-	MoveMouse(){
-		SoundBeep
-		;DllCall("mouse_event", "UInt", 0x01, "UInt", 10, "UInt", 0) ; move
+	MoveMouse(axes){
+		static MOVE_FACTOR := 100
+		;SoundBeep, 1000, 100
+		;ToolTip % axes.x
+		DllCall("mouse_event", "UInt", 0x01, "UInt", axes.x * MOVE_FACTOR, "UInt", 0) ; move
 	}
 	
 	InitHistory(){
@@ -118,6 +137,7 @@ class RollMouse {
 	}
 }
 
-Esc::
+;Esc::
+F12::
 GuiClose:
 ExitApp
