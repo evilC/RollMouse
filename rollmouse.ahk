@@ -1,5 +1,5 @@
 #SingleInstance force
-mr := new RollMouse()
+rm := new RollMouse()
 
 class RollMouse {
 	__New(){
@@ -44,13 +44,11 @@ class RollMouse {
 		if (adx){
 			this.History.Insert({t: t, dt: dt, dx: dx, adx: adx})
 			if (this.History.MaxIndex() > 20){
-				;b := this.History.MaxIndex()
 				this.History.Remove(1)
-				;a := this.History.MaxIndex()
-				;MsgBox % b ", " a
 			}
 		}
 
+		; Set TimeOut to detect stop of movement. As small as possible is good, 20ms seems to work on my machine.
 		SetTimer %TimerFunc%, -20
 	}
 	
@@ -59,12 +57,15 @@ class RollMouse {
 		lifted := 1
 		last_vector := 0
 		max := this.History.MaxIndex()
+		; Check if movement ends abruptly, or tails off
 		if (max > 10){
+			; Loop through the last movements in the buffer...
 			Loop % max{
-				if (last_vector != this.History[A_Index].dx){
-					
-				} else {
+				; Ignore changes of direction...
+				if (last_vector == this.History[A_Index].dx){
+					; If this movement was too long after the last one...
 					if (this.History[A_Index].dt > 10000){
+						; No lift - Movement tailed off
 						lifted := 0
 						break
 					}
