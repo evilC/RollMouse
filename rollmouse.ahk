@@ -78,20 +78,11 @@ class RollMouse {
 				Loop % max{
 					; Ignore changes of direction...
 					s[axis] .= this.History[axis][A_Index].dt ", "
-					if (last_vector = 0 || last_vector == this.History[axis][A_Index].sm){
-						same_vector++
-						; If this movement was too long after the last one...
-						if (this.History[axis][A_Index].dt > 10000){
-							; No lift - Movement tailed off
-							is_lifted[axis] := 0
-							break
-						}
+					if ( (last_vector != 0 && last_vector != this.History[axis][A_Index].sm ) || this.History[axis][A_Index].dt > 10000){
+						is_lifted[axis] := 0
+						break
 					}
 					last_vector := this.History[axis][A_Index].sm
-				}
-				; Reject gestures which vary in vector (sign)
-				if (same_vector != max){
-					is_lifted[axis] := 0
 				}
 			} else {
 				is_lifted[axis] := 0
