@@ -25,6 +25,8 @@ class RollMouse {
 		static ox := (20+A_PtrSize*2), oy := (24+A_PtrSize*2)
 		static TimerFunc := 0
 		static last_t := 0
+		static axes := {x: 1, y: 2}
+		static offsets := {x: (20+A_PtrSize*2), y: (24+A_PtrSize*2)}
 		Critical
 
 		if (!TimerFunc){
@@ -38,17 +40,16 @@ class RollMouse {
 			r := DllCall("GetRawInputData", "UInt", lParam, "UInt", 0x10000003, "Ptr", 0, "UInt*", iSize, "UInt", 8 + A_PtrSize * 2)
 		}
 		r := DllCall("GetRawInputData", "UInt", lParam, "UInt", 0x10000003, "Ptr", &uRawInput, "UInt*", iSize, "UInt", 8 + A_PtrSize * 2)
-		dx := NumGet(&uRawInput, ox, "Int")
-		adx := abs(dx)
-		
-		if (adx){
-			this.History.x.Insert({t: t, dt: dt, dx: dx, adx: adx})
-			if (this.History.x.MaxIndex() > 20){
-				this.History.x.Remove(1)
+		for axis in axes {
+			dm := NumGet(&uRawInput, offsets[axis], "Int")
+			adm := abs(dm)
+			if (adm){
+				this.History[axis].Insert({t: t, dt: dt, dm: dm, adm: adm})
+				if (this.History[axis].MaxIndex() > 20){
+					this.History[axis].Remove(1)
+				}
 			}
 		}
-
-		; Set TimeOut to detect stop of movement. As small as possible is good, 20ms seems to work on my machine.
 		SetTimer %TimerFunc%, -20
 	}
 	
@@ -63,7 +64,7 @@ class RollMouse {
 			; Loop through the last movements in the buffer...
 			Loop % max{
 				; Ignore changes of direction...
-				if (last_vector == this.History.x[A_Index].dx){
+				if (last_vector == this.History.x[A_Index].dm){
 					; If this movement was too long after the last one...
 					if (this.History.x[A_Index].dt > 10000){
 						; No lift - Movement tailed off
@@ -71,7 +72,7 @@ class RollMouse {
 						break
 					}
 				}
-				last_vector := this.History.x[A_Index].dx
+				last_vector := this.History.x[A_Index].dm
 			}
 			if (lifted){
 				ToolTip % this.History.x.MaxIndex()
