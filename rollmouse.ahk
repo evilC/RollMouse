@@ -64,44 +64,55 @@ class RollMouse {
 	MouseStopped(){
 		static axes := {x: 1, y: 2}
 		s := {x: "", y: ""}
-		;ToolTip % this.History.x.MaxIndex()
+		is_lifted := {x: 1, y: 1}
+		move_counts := {x:0 , y:0}
 
 		for axis in axes {
-			if (axis = "y"){
-				continue
-			}
-			lifted := 1
 			last_vector := 0
 			max := this.History[axis].MaxIndex()
 			; Check if movement ends abruptly, or tails off
-			if (max > 10){
+			
+			; Ignore short movements...
+			if (max = this.MOVE_BUFFER_SIZE){
 				; Loop through the last movements in the buffer...
 				Loop % max{
 					; Ignore changes of direction...
 					s[axis] .= this.History[axis][A_Index].dt ", "
-					if (last_vector == this.History[axis][A_Index].sm){
+					if (last_vector = 0 || last_vector == this.History[axis][A_Index].sm){
+						same_vector++
 						; If this movement was too long after the last one...
 						if (this.History[axis][A_Index].dt > 10000){
 							; No lift - Movement tailed off
-							lifted := 0
+							is_lifted[axis] := 0
 							break
 						}
 					}
 					last_vector := this.History[axis][A_Index].sm
 				}
-				if (lifted){
-					;MsgBox % max
-					if (axis = "x"){
-						;MsgBox % max "| x: " s.x
-					}
-					;SoundBeep
-					if (!this.Moving){
-						this.Moving := 1
-						fn := this.MoveFunc
-						SetTimer % fn, 20
-					}
+				; Reject gestures which vary in vector (sign)
+				if (same_vector != max){
+					is_lifted[axis] := 0
 				}
+			} else {
+				is_lifted[axis] := 0
 			}
+		}
+		if (is_lifted.x || is_lifted.y){
+			if (!this.Moving){
+				this.Moving := 1
+				;fn := this.MoveFunc
+				;SetTimer % fn, 20
+				out := "ROLL TRIGGERED (max x: " this.History.x.MaxIndex() ", y: " this.History.y.MaxIndex() ")`n"
+				if(is_lifted.x){
+					out .= "`nx: " s.x
+				}
+				if(is_lifted.y){
+					out .= "`ny: " s.y
+				}
+				ToolTip % out
+			}
+		} else {
+			ToolTip
 		}
 		this.InitHistory()
 	}
