@@ -16,7 +16,7 @@ class RollMouse {
 		fn := this.MouseMoved.Bind(this)
 		OnMessage(0x00FF, fn)
 		
-		this.History := []
+		this.InitHistory()
 	}
 	
 	MouseMoved(wParam, lParam, code){
@@ -42,9 +42,9 @@ class RollMouse {
 		adx := abs(dx)
 		
 		if (adx){
-			this.History.Insert({t: t, dt: dt, dx: dx, adx: adx})
-			if (this.History.MaxIndex() > 20){
-				this.History.Remove(1)
+			this.History.x.Insert({t: t, dt: dt, dx: dx, adx: adx})
+			if (this.History.x.MaxIndex() > 20){
+				this.History.x.Remove(1)
 			}
 		}
 
@@ -56,28 +56,33 @@ class RollMouse {
 		s := ""
 		lifted := 1
 		last_vector := 0
-		max := this.History.MaxIndex()
+		max := this.History.x.MaxIndex()
+		c := 0
 		; Check if movement ends abruptly, or tails off
 		if (max > 10){
 			; Loop through the last movements in the buffer...
 			Loop % max{
 				; Ignore changes of direction...
-				if (last_vector == this.History[A_Index].dx){
+				if (last_vector == this.History.x[A_Index].dx){
 					; If this movement was too long after the last one...
-					if (this.History[A_Index].dt > 10000){
+					if (this.History.x[A_Index].dt > 10000){
 						; No lift - Movement tailed off
 						lifted := 0
 						break
 					}
 				}
-				last_vector := this.History[A_Index].dx
+				last_vector := this.History.x[A_Index].dx
 			}
 			if (lifted){
-				ToolTip % this.History.MaxIndex()
+				ToolTip % this.History.x.MaxIndex()
 				SoundBeep
 			}
 		}
-		this.History := []
+		this.InitHistory()
+	}
+	
+	InitHistory(){
+		this.History := {x: [], y: []}
 	}
 }
 
