@@ -8,7 +8,7 @@ class RollMouse {
 	
 	__New(){
 		static RIDEV_INPUTSINK := 0x00000100
-		Gui, Show, w100 h100
+		Gui, Show, w100 h100	; Gui Needed to get messages
 		DevSize := 8 + A_PtrSize
 		VarSetCapacity(RAWINPUTDEVICE, DevSize)
 		NumPut(1, RAWINPUTDEVICE, 0, "UShort")
@@ -66,6 +66,7 @@ class RollMouse {
 	}
 	
 	MouseStopped(){
+		static MIN_MOVE_TIME := 10000
 		static axes := {x: 1, y: 2}
 		s := {x: "", y: ""}
 		is_lifted := {x: 1, y: 1}
@@ -83,7 +84,7 @@ class RollMouse {
 				Loop % max{
 					s[axis] .= this.History[axis][A_Index].dt ", "
 					; If direction changed, or delta time was too long, discount this gesture
-					if ( (last_vector != 0 && last_vector != this.History[axis][A_Index].sm ) || this.History[axis][A_Index].dt > 10000){
+					if ( (last_vector != 0 && last_vector != this.History[axis][A_Index].sm ) || this.History[axis][A_Index].dt > MIN_MOVE_TIME){
 						is_lifted[axis] := 0
 						break
 					}
@@ -127,8 +128,6 @@ class RollMouse {
 	
 	MoveMouse(axes){
 		static MOVE_FACTOR := 100
-		;SoundBeep, 1000, 100
-		;ToolTip % axes.x
 		DllCall("mouse_event", "UInt", 0x01, "UInt", axes.x * MOVE_FACTOR, "UInt", 0) ; move
 	}
 	
