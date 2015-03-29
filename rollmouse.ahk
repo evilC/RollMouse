@@ -78,6 +78,7 @@ class RollMouse {
 				
 				; Enforce max length
 				if (this.History[axis].Length() > this.MOVE_BUFFER_SIZE){
+					;this.History[axis].Remove(1)
 					this.History[axis].Pop()
 				}
 				
@@ -117,11 +118,10 @@ class RollMouse {
 		is_lifted := {x: 1, y: 1}
 		move_counts := {x:0 , y:0}
 		
-		OutputDebug, Mouse Stopped
+		dbg := "Mouse Stopped: "
 
 		for axis in axes {
 			last_vector := 0
-			c := 0
 			max := this.History[axis].Length()
 			; Check if movement ends abruptly, or tails off
 			
@@ -133,16 +133,13 @@ class RollMouse {
 					; If direction changed, or delta time was too long, discount this gesture
 					if ( (last_vector != 0 && last_vector != this.History[axis][A_Index].sm ) || this.History[axis][A_Index].dt > MIN_MOVE_TIME){
 						is_lifted[axis] := 0
+						dbg .= axis " Direction changed, or delta time was too long. "
 						break
 					}
-					c++
 					last_vector := this.History[axis][A_Index].sm
 				}
 			} else {
-				is_lifted[axis] := 0
-			}
-			
-			if (c < max){
+				dbg .= axis " Did not meet max buffer size. "
 				is_lifted[axis] := 0
 			}
 		}
@@ -158,18 +155,17 @@ class RollMouse {
 				SetTimer % fn, 20
 				this.RollMouse(is_lifted)
 				
-				out := "ROLL TRIGGERED (max x: " this.History.x.Length() ", y: " this.History.y.Length() ")`n"
+				dbg .= "ROLL TRIGGERED (max x: " this.History.x.Length() ", y: " this.History.y.Length() ")"
 				if(is_lifted.x){
-					out .= "`nx: " s.x
+					dbg .= " | x: " s.x
 				}
 				if(is_lifted.y){
-					out .= "`ny: " s.y
+					dbg .= " | y: " s.y
 				}
-				;ToolTip % out
 			}
-		} else {
-			;ToolTip
 		}
+		OutputDebug % dbg
+
 		this.InitHistory()
 	}
 	
