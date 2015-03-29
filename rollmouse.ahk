@@ -8,6 +8,7 @@ OutputDebug, DBGVIEWCLEAR
 class RollMouse {
 	Rolling := 0
 	TimeOutFunc := 0
+	History := {}	; Movement history. The most recent item is first (Index 1), and old (high index) items get pruned off the end
 	MOVE_BUFFER_SIZE := 20
 	
 	; Called on startup.
@@ -72,12 +73,12 @@ class RollMouse {
 				; Prune for change in direction
 				
 				; Add new entry
-				this.History[axis].Insert({t: t, dt: dt, dm: dm, adm: adm, sm: sm})
+				this.History[axis].InsertAt(1,{t: t, dt: dt, dm: dm, adm: adm, sm: sm})
 				; Prune old entries...
 				
 				; Enforce max length
-				if (this.History[axis].MaxIndex() > this.MOVE_BUFFER_SIZE){
-					this.History[axis].Remove(1)
+				if (this.History[axis].Length() > this.MOVE_BUFFER_SIZE){
+					this.History[axis].Pop()
 				}
 				
 				; Prune for time
@@ -90,7 +91,7 @@ class RollMouse {
 			; We are rolling the mouse.
 			; If this is genuine user input, we should stop rolling (The user placed the mouse back on the mat)
 			; Howver, when we "Roll" the mouse using code, we see the movement we just output as input.
-			if (this.History.x[this.History.x.MaxIndex()].dt < 10000){
+			if (this.History.x[this.History.x.Length()].dt < 10000){
 				; Latest move update was less that 10000 ago, this is actual user input...
 				; ...A bit unsure as to exactly why this works, could maybe do with improving?
 				
@@ -121,7 +122,7 @@ class RollMouse {
 		for axis in axes {
 			last_vector := 0
 			c := 0
-			max := this.History[axis].MaxIndex()
+			max := this.History[axis].Length()
 			; Check if movement ends abruptly, or tails off
 			
 			; Ignore short movements...
@@ -150,14 +151,14 @@ class RollMouse {
 				this.Rolling := 1
 				obj := is_lifted
 				for axis in axes {
-					obj[axis] *= this.History[axis][this.History[axis].MaxIndex()].sm
+					obj[axis] *= this.History[axis][1].sm
 				}
 				fn := this.RollMouse.Bind(this, obj)
 				this.RollFunc := fn
 				SetTimer % fn, 20
 				this.RollMouse(is_lifted)
 				
-				out := "ROLL TRIGGERED (max x: " this.History.x.MaxIndex() ", y: " this.History.y.MaxIndex() ")`n"
+				out := "ROLL TRIGGERED (max x: " this.History.x.Length() ", y: " this.History.y.Length() ")`n"
 				if(is_lifted.x){
 					out .= "`nx: " s.x
 				}
