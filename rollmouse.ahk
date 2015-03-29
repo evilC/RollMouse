@@ -4,7 +4,7 @@ rm := new RollMouse()
 class RollMouse {
 	Moving := 0
 	TimeOutFunc := 0
-	MOVE_BUFFER_SIZE := 25
+	MOVE_BUFFER_SIZE := 20
 	
 	__New(){
 		static RIDEV_INPUTSINK := 0x00000100
@@ -27,9 +27,11 @@ class RollMouse {
 	MouseMoved(wParam, lParam, code){
 		static DeviceSize := 2 * A_PtrSize
 		static iSize := 0
+		static sz := 0
 		static last_t := 0
 		static axes := {x: 1, y: 2}
 		static offsets := {x: (20+A_PtrSize*2), y: (24+A_PtrSize*2)}
+		static uRawInput
 		
 		Critical
 		
@@ -37,9 +39,11 @@ class RollMouse {
 		dt := t - last_t
 		last_t := t
 		if (!iSize){
-			r := DllCall("GetRawInputData", "UInt", lParam, "UInt", 0x10000003, "Ptr", 0, "UInt*", iSize, "UInt", 8 + A_PtrSize * 2)
+			r := DllCall("GetRawInputData", "UInt", lParam, "UInt", 0x10000003, "Ptr", 0, "UInt*", iSize, "UInt", 8 + (A_PtrSize * 2))
+			VarSetCapacity(uRawInput, iSize)
 		}
-		r := DllCall("GetRawInputData", "UInt", lParam, "UInt", 0x10000003, "Ptr", &uRawInput, "UInt*", iSize, "UInt", 8 + A_PtrSize * 2)
+		sz := iSize
+		r := DllCall("GetRawInputData", "UInt", lParam, "UInt", 0x10000003, "Ptr", &uRawInput, "UInt*", sz, "UInt", 8 + (A_PtrSize * 2))
 		for axis in axes {
 			dm := NumGet(&uRawInput, offsets[axis], "Int")
 			adm := abs(dm)
@@ -56,9 +60,7 @@ class RollMouse {
 				fn := this.MoveFunc
 				SetTimer % fn, Off
 				this.Moving := 0
-				;ToolTip % this.History.x[this.History.x.MaxIndex()].dt
 			}
-			;SoundBeep, 500, 100
 		} else {
 			fn := this.TimeOutFunc
 			SetTimer % fn, -20
@@ -66,7 +68,8 @@ class RollMouse {
 	}
 	
 	MouseStopped(){
-		static MIN_MOVE_TIME := 10000
+		;static MIN_MOVE_TIME := 10000
+		static MIN_MOVE_TIME := 14000
 		static axes := {x: 1, y: 2}
 		s := {x: "", y: ""}
 		is_lifted := {x: 1, y: 1}
