@@ -2,13 +2,18 @@
 rm := new RollMouse()
 
 class RollMouse {
-	Moving := 0
+	Rolling := 0
 	TimeOutFunc := 0
 	MOVE_BUFFER_SIZE := 20
 	
+	; Called on startup.
 	__New(){
 		static RIDEV_INPUTSINK := 0x00000100
-		Gui, Show, w100 h100	; Gui Needed to get messages
+		
+		; Create GUI (GUI needed to receive messages)
+		Gui, Show, w100 h100
+		
+		; Register mouse for WM_INPUT messages.
 		DevSize := 8 + A_PtrSize
 		VarSetCapacity(RAWINPUTDEVICE, DevSize)
 		NumPut(1, RAWINPUTDEVICE, 0, "UShort")
@@ -20,10 +25,13 @@ class RollMouse {
 		fn := this.MouseMoved.Bind(this)
 		OnMessage(0x00FF, fn)
 		
+		; Initialize
 		this.TimeOutFunc := this.MouseStopped.Bind(this)
 		this.InitHistory()
 	}
 	
+	; Called when the mouse moved.
+	; Messages tend to contain small (+/- 1) movements, and happen frequently (~20ms)
 	MouseMoved(wParam, lParam, code){
 		static DeviceSize := 2 * A_PtrSize
 		static iSize := 0
@@ -35,15 +43,23 @@ class RollMouse {
 		
 		Critical
 		
+		; Get accurate timestamp for this message
 		DllCall("QueryPerformanceCounter",Int64P, t)
+
+		; Get delta time
 		dt := t - last_t
 		last_t := t
+		
+		; Find size of rawinput data - only needs to be run the first time.
 		if (!iSize){
 			r := DllCall("GetRawInputData", "UInt", lParam, "UInt", 0x10000003, "Ptr", 0, "UInt*", iSize, "UInt", 8 + (A_PtrSize * 2))
 			VarSetCapacity(uRawInput, iSize)
 		}
-		sz := iSize
+		sz := iSize	; param gets overwritten with # of bytes output, so preserve iSize
+		; Get RawInput data
 		r := DllCall("GetRawInputData", "UInt", lParam, "UInt", 0x10000003, "Ptr", &uRawInput, "UInt*", sz, "UInt", 8 + (A_PtrSize * 2))
+		
+		; Update History array
 		for axis in axes {
 			dm := NumGet(&uRawInput, offsets[axis], "Int")
 			adm := abs(dm)
@@ -55,18 +71,30 @@ class RollMouse {
 				}
 			}
 		}
-		if (this.Moving){
+		
+		; Decide what action to take due to the mouse movement.
+		if (this.Rolling){
+			; We are rolling the mouse.
+			; If this is genuine user input, we should stop rolling (The user placed the mouse back on the mat)
+			; Howver, when we "Roll" the mouse using code, we see the movement we just output as input.
 			if (this.History.x[this.History.x.MaxIndex()].dt < 10000){
-				fn := this.MoveFunc
+				; Latest move update was less that 10000 ago, this is actual user input...
+				; ...A bit unsure as to exactly why this works, could maybe do with improving?
+				
+				; Turn off Roll timer
+				fn := this.RollFunc
 				SetTimer % fn, Off
-				this.Moving := 0
+				this.Rolling := 0
 			}
 		} else {
+			; Mouse is being used normally, set a timeout func to run 20 ms from now
 			fn := this.TimeOutFunc
 			SetTimer % fn, -20
 		}
 	}
 	
+	; Timeout occurred after a move - mouse stopped moving.
+	; Decide whether to Roll mouse or not
 	MouseStopped(){
 		;static MIN_MOVE_TIME := 10000
 		static MIN_MOVE_TIME := 14000
@@ -103,16 +131,16 @@ class RollMouse {
 			}
 		}
 		if (is_lifted.x || is_lifted.y){
-			if (!this.Moving){
-				this.Moving := 1
+			if (!this.Rolling){
+				this.Rolling := 1
 				obj := is_lifted
 				for axis in axes {
 					obj[axis] *= this.History[axis][this.History[axis].MaxIndex()].sm
 				}
-				fn := this.MoveMouse.Bind(this, obj)
-				this.MoveFunc := fn
+				fn := this.RollMouse.Bind(this, obj)
+				this.RollFunc := fn
 				SetTimer % fn, 20
-				this.MoveMouse(is_lifted)
+				this.RollMouse(is_lifted)
 				
 				out := "ROLL TRIGGERED (max x: " this.History.x.MaxIndex() ", y: " this.History.y.MaxIndex() ")`n"
 				if(is_lifted.x){
@@ -129,7 +157,7 @@ class RollMouse {
 		this.InitHistory()
 	}
 	
-	MoveMouse(axes){
+	RollMouse(axes){
 		static MOVE_FACTOR := 100
 		DllCall("mouse_event", "UInt", 0x01, "UInt", axes.x * MOVE_FACTOR, "UInt", 0) ; move
 	}
