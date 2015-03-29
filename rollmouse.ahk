@@ -1,5 +1,9 @@
+; Requires AHK >= 1.1.21.00
+
 #SingleInstance force
 rm := new RollMouse()
+
+OutputDebug, DBGVIEWCLEAR
 
 class RollMouse {
 	Rolling := 0
@@ -61,14 +65,23 @@ class RollMouse {
 		
 		; Update History array
 		for axis in axes {
-			dm := NumGet(&uRawInput, offsets[axis], "Int")
-			adm := abs(dm)
-			sm := (adm = dm) ? 1 : -1
+			dm := NumGet(&uRawInput, offsets[axis], "Int")	; delta move
+			adm := abs(dm)	; absolute delta move
+			sm := (adm = dm) ? 1 : -1	; sign of move
 			if (adm){
+				; Prune for change in direction
+				
+				; Add new entry
 				this.History[axis].Insert({t: t, dt: dt, dm: dm, adm: adm, sm: sm})
+				; Prune old entries...
+				
+				; Enforce max length
 				if (this.History[axis].MaxIndex() > this.MOVE_BUFFER_SIZE){
 					this.History[axis].Remove(1)
 				}
+				
+				; Prune for time
+				
 			}
 		}
 		
@@ -102,6 +115,8 @@ class RollMouse {
 		s := {x: "", y: ""}
 		is_lifted := {x: 1, y: 1}
 		move_counts := {x:0 , y:0}
+		
+		OutputDebug, Mouse Stopped
 
 		for axis in axes {
 			last_vector := 0
