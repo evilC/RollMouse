@@ -1,4 +1,5 @@
 ; Requires AHK >= 1.1.21.00
+#include <CvJoyInterface>
 
 #SingleInstance force
 rm := new RollMouse()
@@ -9,7 +10,7 @@ class RollMouse {
 	Rolling := 0
 	TimeOutFunc := 0
 	History := {}	; Movement history. The most recent item is first (Index 1), and old (high index) items get pruned off the end
-	MOVE_BUFFER_SIZE := 20
+	MOVE_BUFFER_SIZE := 50
 	
 	; Called on startup.
 	__New(){
@@ -38,7 +39,7 @@ class RollMouse {
 	; Called when the mouse moved.
 	; Messages tend to contain small (+/- 1) movements, and happen frequently (~20ms)
 	MouseMoved(wParam, lParam, code){
-		static MAX_TIME := 1000000
+		static MAX_TIME := 1000000		; Only cache values for this long.
 		; RawInput statics
 		static DeviceSize := 2 * A_PtrSize, iSize := 0, sz := 0, offsets := {x: (20+A_PtrSize*2), y: (24+A_PtrSize*2)}, uRawInput
 		
@@ -58,7 +59,9 @@ class RollMouse {
 		sz := iSize	; param gets overwritten with # of bytes output, so preserve iSize
 		; Get RawInput data
 		r := DllCall("GetRawInputData", "UInt", lParam, "UInt", 0x10000003, "Ptr", &uRawInput, "UInt*", sz, "UInt", 8 + (A_PtrSize * 2))
-
+		
+		moved := {x: 0, y: 0}
+		
 		for axis in axes {
 			max := this.History[axis].Length()
 			obj := {time: this_time}
@@ -67,38 +70,44 @@ class RollMouse {
 			obj.abs_delta_move := abs(obj.delta_move)
 			obj.sgn_move := (obj.abs_delta_move = obj.delta_move) ? 1 : -1
 			
-			; Manage History for this axis
-			if (max){
-				; Clear axis history on change of direction
-				if (abs(obj.sgn_move) && obj.sgn_move != this.History[axis][1].sgn_move){
-					this.History[axis] := []
-					max := 0
-				}
+			if (obj.abs_delta_move){
+				moved[axis] := 1
+				; Manage History for this axis
+				if (max){
+					; Clear axis history on change of direction
+					if (abs(obj.sgn_move) && obj.sgn_move != this.History[axis][1].sgn_move){
+						this.History[axis] := []
+						max := 0
+					}
 
-				; Enforce max number of entries
-				if (max > (this.MOVE_BUFFER_SIZE - 1)){
-					this.History[axis].RemoveAt(max, max - this.MOVE_BUFFER_SIZE)
-				}
+					; Enforce max number of entries
+					if (max > (this.MOVE_BUFFER_SIZE - 1)){
+						this.History[axis].RemoveAt(max, max - this.MOVE_BUFFER_SIZE)
+					}
 
-				; Clear axis history of out-of-date items
-				cutoff := this_time - MAX_TIME
-				Loop % max {
-					if (this.History[axis][A_Index].time < cutoff){
-						this.History[axis].RemoveAt(A_Index, max - A_Index)
-						break
+					; Clear axis history of out-of-date items
+					cutoff := this_time - MAX_TIME
+					Loop % max {
+						if (this.History[axis][A_Index].time < cutoff){
+							this.History[axis].RemoveAt(A_Index, max - A_Index)
+							break
+						}
 					}
 				}
-			}
 			
 			; Add new item
 			this.History[axis].InsertAt(1, obj)
 			
-			OutputDebug % obj.sgn_move " | " this.History[axis].Length() " | " obj.time - this.History[axis][2].time
+			;OutputDebug % obj.sgn_move " | " this.History[axis].Length() " | " obj.time - this.History[axis][2].time
+			}
 		}
 
-		; Start / Reset TimeOut timer to detect mouse stop
-		fn := this.TimeOutFunc
-		SetTimer % fn, -20
+		; ignore movements such as mouse wheel, buttons etc.
+		if (moved.x || moved.y){
+			; Start / Reset TimeOut timer to detect mouse stop
+			fn := this.TimeOutFunc
+			SetTimer % fn, -20
+		}
 
 		/*
 		static DeviceSize := 2 * A_PtrSize
@@ -175,7 +184,46 @@ class RollMouse {
 	; Timeout occurred after a move - mouse stopped moving.
 	; Decide whether to Roll mouse or not
 	MouseStopped(){
-		SoundBeep
+		;static axes := {x: 1, y: 2}
+		static axes := {x: 1}
+		static MIN_MOVE_TIME := 8000	; On a flick, all move delta times will be below this value.
+
+		s := A_ThisFunc ": "
+		
+		for axis in axes {
+			s .= axis " - "
+			t := this.History[axis][1].time
+			max := this.History[axis].Length()
+			discard := 0
+			
+			highest := 0
+			lowest := 999999999
+			
+			if (max < this.MOVE_BUFFER_SIZE){
+				s .= "Discarded - too short a move (" max ")"
+				break
+			}
+			Loop % max {
+				delta_time := t - this.History[axis][A_Index].time
+				t := this.History[axis][A_Index].time
+				if (delta_time > MIN_MOVE_TIME){
+					discard := 1
+					s .= "Discarded - value " A_Index " was above MIN_MOVE_TIME. "
+					break
+				}
+				if (delta_time > highest){
+					highest := delta_time
+				}
+				if ((A_Index != 1) && delta_time < lowest){
+					lowest := delta_time
+				}
+			}
+			if (!discard){
+				s .= "ROLL ! " highest ", " lowest
+			}
+		}
+		this.InitHistory()
+		OutputDebug % s
 		/*
 		;static MIN_MOVE_TIME := 10000
 		static MIN_MOVE_TIME := 14000
