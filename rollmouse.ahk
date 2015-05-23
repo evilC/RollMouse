@@ -6,10 +6,33 @@ rm := new RollMouse()
 OutputDebug, DBGVIEWCLEAR
 
 class RollMouse {
-	Rolling := 0
+	; User configurable items
+	; The speed at which you must move the mouse to be able to trigger a roll
+	MoveThreshold := {x: 7, y: 7}
+	
+	; The speed at which to move the mouse, can be decimals (eg 0.5)
+	MoveFactor := {x: 1, y: 1}
+	
+	; How long to wait after each move to decide whether a roll has taken place.
+	; Also, how frequently to send output to the mouse on roll
+	TimeOutRate := 20
+	
+	; The amount that we are currently rolling by
+	LastMove := {x: 0, y: 0}
+
+	; The number of previous moves stored - used to calculate vector of a roll
+	; Higher numbers = greater fidelity, but more CPU
+	MOVE_BUFFER_SIZE := 10
+
+	; Non user-configurable items
+	STATE_STOPPED := 0
+	STATE_MOVING := 1
+	STATE_ROLLING := 2
+	
+	State := 0
+	
 	TimeOutFunc := 0
 	History := {}	; Movement history. The most recent item is first (Index 1), and old (high index) items get pruned off the end
-	MOVE_BUFFER_SIZE := 20
 	
 	; Called on startup.
 	__New(){
@@ -17,6 +40,8 @@ class RollMouse {
 		
 		; Create GUI (GUI needed to receive messages)
 		Gui, Show, w100 h100
+		
+		this.State := this.STATE_STOPPED
 		
 		; Register mouse for WM_INPUT messages.
 		DevSize := 8 + A_PtrSize
@@ -31,29 +56,21 @@ class RollMouse {
 		OnMessage(0x00FF, fn)
 		
 		; Initialize
-		this.TimeOutFunc := this.MouseStopped.Bind(this)
+		this.TimeOutFunc := this.DoRoll.Bind(this)
 		this.InitHistory()
 	}
 	
 	; Called when the mouse moved.
 	; Messages tend to contain small (+/- 1) movements, and happen frequently (~20ms)
 	MouseMoved(wParam, lParam, code){
-		static DeviceSize := 2 * A_PtrSize
-		static iSize := 0
-		static sz := 0
-		static last_t := 0
-		static axes := {x: 1, y: 2}
-		static offsets := {x: (20+A_PtrSize*2), y: (24+A_PtrSize*2)}
-		static uRawInput
+		static MAX_TIME := 1000000		; Only cache values for this long.
 		
 		Critical
 		
-		; Get accurate timestamp for this message
-		DllCall("QueryPerformanceCounter",Int64P, t)
-
-		; Get delta time
-		dt := t - last_t
-		last_t := t
+		; RawInput statics
+		static DeviceSize := 2 * A_PtrSize, iSize := 0, sz := 0, offsets := {x: (20+A_PtrSize*2), y: (24+A_PtrSize*2)}, uRawInput
+		
+		static axes := {x: 1, y: 2}
 		
 		; Find size of rawinput data - only needs to be run the first time.
 		if (!iSize){
@@ -64,114 +81,89 @@ class RollMouse {
 		; Get RawInput data
 		r := DllCall("GetRawInputData", "UInt", lParam, "UInt", 0x10000003, "Ptr", &uRawInput, "UInt*", sz, "UInt", 8 + (A_PtrSize * 2))
 		
-		; Update History array
-		for axis in axes {
-			dm := NumGet(&uRawInput, offsets[axis], "Int")	; delta move
-			adm := abs(dm)	; absolute delta move
-			sm := (adm = dm) ? 1 : -1	; sign of move
-			if (adm){
-				; Prune for change in direction
-				
-				; Add new entry
-				this.History[axis].InsertAt(1,{t: t, dt: dt, dm: dm, adm: adm, sm: sm})
-				; Prune old entries...
-				
-				; Enforce max length
-				if (this.History[axis].Length() > this.MOVE_BUFFER_SIZE){
-					;this.History[axis].Remove(1)
-					this.History[axis].Pop()
-				}
-				
-				; Prune for time
-				
-			}
-		}
+		moved := {x: 0, y: 0}
 		
-		; Decide what action to take due to the mouse movement.
-		if (this.Rolling){
-			; We are rolling the mouse.
-			; If this is genuine user input, we should stop rolling (The user placed the mouse back on the mat)
-			; Howver, when we "Roll" the mouse using code, we see the movement we just output as input.
-			if (this.History.x[this.History.x.Length()].dt < 10000){
-				; Latest move update was less that 10000 ago, this is actual user input...
-				; ...A bit unsure as to exactly why this works, could maybe do with improving?
-				
-				; Turn off Roll timer
-				fn := this.RollFunc
-				SetTimer % fn, Off
-				this.Rolling := 0
-			}
-		} else {
-			; Mouse is being used normally, set a timeout func to run 20 ms from now
-			fn := this.TimeOutFunc
-			SetTimer % fn, -20
-		}
-	}
-	
-	; Timeout occurred after a move - mouse stopped moving.
-	; Decide whether to Roll mouse or not
-	MouseStopped(){
-		;static MIN_MOVE_TIME := 10000
-		static MIN_MOVE_TIME := 14000
-		static axes := {x: 1, y: 2}
-		s := {x: "", y: ""}
-		is_lifted := {x: 1, y: 1}
-		move_counts := {x:0 , y:0}
+		fn := this.TimeOutFunc
 		
-		dbg := "Mouse Stopped: "
-
 		for axis in axes {
-			last_vector := 0
 			max := this.History[axis].Length()
-			; Check if movement ends abruptly, or tails off
-			
-			; Ignore short movements...
-			if (max = this.MOVE_BUFFER_SIZE){
-				; Loop through the last movements in the buffer...
-				Loop % max{
-					s[axis] .= this.History[axis][A_Index].dt ", "
-					; If direction changed, or delta time was too long, discount this gesture
-					if ( (last_vector != 0 && last_vector != this.History[axis][A_Index].sm ) || this.History[axis][A_Index].dt > MIN_MOVE_TIME){
-						is_lifted[axis] := 0
-						dbg .= axis " Direction changed, or delta time was too long. "
-						break
-					}
-					last_vector := this.History[axis][A_Index].sm
+			obj := {}
+			;obj := {time: this_time}
+			;last_time := max ? this.History[axis][1].time : 0
+			obj.delta_move := NumGet(&uRawInput, offsets[axis], "Int")
+			obj.abs_delta_move := abs(obj.delta_move)
+			obj.sgn_move := (obj.abs_delta_move = obj.delta_move) ? 1 : -1
+
+			if (this.State == this.STATE_ROLLING){
+				; in STATE_ROLLING, moved = 1 means we detected any kind of mouse movement that wasn't the roll
+				if (obj.abs_delta_move != 0 && obj.abs_delta_move != abs(this.LastMove[axis])){
+					moved[axis] := 1
 				}
 			} else {
-				dbg .= axis " Did not meet max buffer size. "
-				is_lifted[axis] := 0
+				; in STATE_MOVING, moved = 1 means we detected a movement above the threshold in that direction
+				if (obj.abs_delta_move >= this.MoveThreshold[axis]){
+					moved[axis] := 1
+				}
+				this.UpdateHistory(axis, obj)
+			}
+			
+			if (!moved[axis]){
+				continue
 			}
 		}
-		if (is_lifted.x || is_lifted.y){
-			if (!this.Rolling){
-				this.Rolling := 1
-				obj := is_lifted
-				for axis in axes {
-					obj[axis] *= this.History[axis][1].sm
-				}
-				fn := this.RollMouse.Bind(this, obj)
-				this.RollFunc := fn
-				SetTimer % fn, 20
-				this.RollMouse(is_lifted)
-				
-				dbg .= "ROLL TRIGGERED (max x: " this.History.x.Length() ", y: " this.History.y.Length() ")"
-				if(is_lifted.x){
-					dbg .= " | x: " s.x
-				}
-				if(is_lifted.y){
-					dbg .= " | y: " s.y
-				}
+		
+		; Move information gathered, decide what to do...
+		
+		if (this.State == this.STATE_ROLLING){
+			; We are rolling
+			if (moved.x || moved.y){
+				; Normal input was detected - stop rolling
+				SetTimer % fn, Off
+				this.State := this.STATE_MOVING
+				this.LastMove := {x: 0, y: 0}
+			}
+		} else {
+			; We are not rolling
+			if (moved.x || moved.y){
+				; A move over the threshold was detected.
+				this.State := this.STATE_MOVING
+				; Set timer to catch sudden stop in mouse movement
+				SetTimer % fn, % this.TimeOutRate
+			} else {
+				; Consider anything else "Stopped"
+				this.State := this.STATE_STOPPED
 			}
 		}
-		OutputDebug % dbg
-
-		this.InitHistory()
 	}
 	
-	RollMouse(axes){
-		static MOVE_FACTOR := 100
-		DllCall("mouse_event", "UInt", 0x01, "UInt", axes.x * MOVE_FACTOR, "UInt", 0) ; move
+	UpdateHistory(axis, obj){
+		this.History[axis].InsertAt(1, obj)
+		; Enforce max number of entries
+		max := this.History[axis].Length()
+		if (max > (this.MOVE_BUFFER_SIZE - 1)){
+			this.History[axis].RemoveAt(max, max - this.MOVE_BUFFER_SIZE)
+		}
+
+	}
+	; A timeout occurred - Perform a roll
+	DoRoll(){
+		static axes := {x: 1, y: 2}
+
+		if (this.State != this.STATE_ROLLING){
+			; If roll has just started, calculate roll vector from movement history
+			this.State := this.STATE_ROLLING
+			
+			this.LastMove := {x: 0, y: 0}
+			
+			for axis in axes {
+				Loop % this.History[axis].Length() {
+					this.LastMove[axis] += this.History[axis][A_Index].delta_move
+				}
+				this.LastMove[axis] *= this.MoveFactor[axis]
+			}
+		}
+		
+		DllCall("mouse_event", "UInt", 0x01, "Int", this.LastMove.x, "Int", this.LastMove.y) ; move
 	}
 	
 	InitHistory(){
