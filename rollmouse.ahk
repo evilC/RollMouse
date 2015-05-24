@@ -149,7 +149,8 @@ class RollMouse {
 				SetTimer % fn, % this.TimeOutRate
 			} else {
 				; Consider anything else "Stopped"
-				this.State := this.STATE_STOPPED
+				;this.State := this.STATE_STOPPED
+				this.State := this.STATE_MOVING	; attempted bodge to stop roll getting locked on
 			}
 		}
 	}
