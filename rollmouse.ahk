@@ -5,16 +5,32 @@ rm := new RollMouse()
 
 OutputDebug, DBGVIEWCLEAR
 
+/*
+ToDo:
+
+* Add GUI
+  Persistent settings etc.
+* Better history.
+  Expire items that are too old.
+  Filter outliers - eg a slight move up sometimes has a few move downs in there - keep general up motion but filter out direction inversions.
+  Clear history on change of direction?
+
+*/
 class RollMouse {
 	; User configurable items
 	; The speed at which you must move the mouse to be able to trigger a roll
-	MoveThreshold := {x: 7, y: 7}
+	MoveThreshold := {x: 5, y: 5}
 	
 	; The speed at which to move the mouse, can be decimals (eg 0.5)
-	MoveFactor := {x: 1, y: 1}
+	MoveFactor := {x: 0.5, y: 0.5}
+	;MoveFactor := {x: 1, y: 1}
+	
+	; How fast (in ms) to send moves when rolling.
+	; High values for this will cause rolls to appear jerky instead of smooth
+	; if you halved this, double MoveFactor to get the same move amount, but at a faster frequency.
+	RollFreq := 2
 	
 	; How long to wait after each move to decide whether a roll has taken place.
-	; Also, how frequently to send output to the mouse on roll
 	TimeOutRate := 20
 	
 	; The amount that we are currently rolling by
@@ -42,6 +58,7 @@ class RollMouse {
 		Gui, Show, w100 h100
 		
 		this.State := this.STATE_STOPPED
+		this.TimeOutRate := this.TimeOutRate * -1
 		
 		; Register mouse for WM_INPUT messages.
 		DevSize := 8 + A_PtrSize
@@ -104,8 +121,9 @@ class RollMouse {
 				if (obj.abs_delta_move >= this.MoveThreshold[axis]){
 					moved[axis] := 1
 				}
-				this.UpdateHistory(axis, obj)
 			}
+			
+			this.UpdateHistory(axis, obj)
 			
 			if (!moved[axis]){
 				continue
@@ -149,6 +167,8 @@ class RollMouse {
 	DoRoll(){
 		static axes := {x: 1, y: 2}
 
+		s := ""
+		
 		if (this.State != this.STATE_ROLLING){
 			; If roll has just started, calculate roll vector from movement history
 			this.State := this.STATE_ROLLING
@@ -156,14 +176,39 @@ class RollMouse {
 			this.LastMove := {x: 0, y: 0}
 			
 			for axis in axes {
-				Loop % this.History[axis].Length() {
-					this.LastMove[axis] += this.History[axis][A_Index].delta_move
+				s .= axis ": "
+				trend := 0
+				if (this.History[axis].Length() < this.MOVE_BUFFER_SIZE){
+					; ignore gestures that are too short
+					continue
 				}
-				this.LastMove[axis] *= this.MoveFactor[axis]
+				Loop % this.History[axis].Length() {
+					if (A_Index != 1){
+						; Calculate the trend of the history.
+						trend += (this.History[axis][A_Index].delta_move - this.History[axis][A_Index-1].delta_move)
+					}
+					this.LastMove[axis] += this.History[axis][A_Index].delta_move
+					s .= this.History[axis][A_Index].delta_move ","
+				}
+				s .= "(" trend ")`n"
+				if (sgn(trend) != sgn(this.History[axis][1].delta_move)){
+					; downward trend of move speed detected - this is probably a normal stop of the mouse, not a lift
+					continue
+				}
+				this.LastMove[axis] := round(this.LastMove[axis] * this.MoveFactor[axis])
 			}
 		}
 		
-		DllCall("mouse_event", "UInt", 0x01, "Int", this.LastMove.x, "Int", this.LastMove.y) ; move
+		if (this.LastMove.x = 0 && this.LastMove.y = 0){
+			return
+		}
+
+		OutputDebug % "MOVE DETECTED: `n" s "`n"
+		while (this.State = this.STATE_ROLLING){
+			DllCall("mouse_event", "UInt", 0x01, "Int", this.LastMove.x, "Int", this.LastMove.y) ; move
+			Sleep % this.RollFreq
+		}
+		
 	}
 	
 	InitHistory(){
@@ -171,6 +216,15 @@ class RollMouse {
 	}
 }
 
+Sgn(val){
+	if (val > 0){
+		return 1
+	} else if (sgn < 0){
+		return -1
+	} else {
+		return 0
+	}
+}
 ;Esc::
 F12::
 GuiClose:
