@@ -58,7 +58,7 @@ class RollMouse {
 		; Create GUI (GUI needed to receive messages)
 		Gui, Show, w100 h100
 		
-		this.ChangeState(this.STATE_STOPPED)
+		;this.ChangeState(this.STATE_STOPPED)
 		
 		; Set TimeOutRate to negative value to have timer only fire once.
 		this.TimeOutRate := this.TimeOutRate * -1
@@ -103,8 +103,6 @@ class RollMouse {
 		
 		moved := {x: 0, y: 0}
 		
-		fn := this.TimeOutFunc
-		
 		for axis in axes {
 			max := this.History[axis].Length()
 			obj := {}
@@ -133,11 +131,8 @@ class RollMouse {
 		
 		if (this.State == this.STATE_ROLLING){
 			; We are rolling
-			if (moved.x || moved.y){
 				; Normal input was detected - stop rolling
-				SetTimer % fn, Off
 				this.ChangeState(this.STATE_MOVING)
-				this.LastMove := {x: 0, y: 0}
 			}
 		} else {
 			; We are not rolling
@@ -145,11 +140,9 @@ class RollMouse {
 				; A move over the threshold was detected.
 				this.ChangeState(this.STATE_MOVING)
 				; Set timer to catch sudden stop in mouse movement
-				SetTimer % fn, % this.TimeOutRate
 			} else {
 				; Consider anything else "Stopped"
 				this.ChangeState(this.STATE_STOPPED)
-				SetTimer % fn, Off
 			}
 		}
 	}
@@ -172,8 +165,6 @@ class RollMouse {
 		if (this.State != this.STATE_ROLLING){
 			; If roll has just started, calculate roll vector from movement history
 			this.ChangeState(this.STATE_ROLLING)
-			
-			this.LastMove := {x: 0, y: 0}
 			
 			for axis in axes {
 				s .= axis ": "
@@ -203,7 +194,7 @@ class RollMouse {
 			return
 		}
 
-		OutputDebug % "ROLL DETECTED: `n" s "`n"
+		OutputDebug % "ROLL DETECTED: `n" s "Rolling x: " this.LastMove.x ", y: " this.LastMove.y "`n`n"
 		while (this.State = this.STATE_ROLLING){
 			DllCall("mouse_event", "UInt", 0x01, "Int", this.LastMove.x, "Int", this.LastMove.y) ; move
 			Sleep % this.RollFreq
@@ -216,9 +207,18 @@ class RollMouse {
 	}
 	
 	ChangeState(newstate){
+		fn := this.TimeOutFunc
 		if (this.State != newstate){
 			OutputDebug, % "Changing State to : " this.StateNames[newstate]
 			this.State := newstate
+		}
+		if (this.State = this.STATE_STOPPED){
+			SetTimer % fn, Off
+			this.InitHistory()
+		} else if (this.State = this.STATE_MOVING){
+			SetTimer % fn, % this.TimeOutRate
+		} else if (this.State = this.STATE_ROLLING){
+			this.LastMove := {x: 0, y: 0}
 		}
 	}
 }
@@ -226,12 +226,20 @@ class RollMouse {
 Sgn(val){
 	if (val > 0){
 		return 1
-	} else if (sgn < 0){
+	} else if (val < 0){
 		return -1
 	} else {
 		return 0
 	}
 }
+
+return
+
+F11::
+	; Temporary bodge - set state back to stopped
+	rm.ChangeState(rm.STATE_STOPPED)
+	return
+
 ;Esc::
 F12::
 GuiClose:
