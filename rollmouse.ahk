@@ -41,9 +41,10 @@ class RollMouse {
 	MOVE_BUFFER_SIZE := 10
 
 	; Non user-configurable items
-	STATE_STOPPED := 0
-	STATE_MOVING := 1
-	STATE_ROLLING := 2
+	STATE_STOPPED := 1
+	STATE_MOVING := 2
+	STATE_ROLLING := 3
+	StateNames := ["STOPPED", "MOVING", "ROLLING"]
 	
 	State := 0
 	
@@ -57,7 +58,9 @@ class RollMouse {
 		; Create GUI (GUI needed to receive messages)
 		Gui, Show, w100 h100
 		
-		this.State := this.STATE_STOPPED
+		this.ChangeState(this.STATE_STOPPED)
+		
+		; Set TimeOutRate to negative value to have timer only fire once.
 		this.TimeOutRate := this.TimeOutRate * -1
 		
 		; Register mouse for WM_INPUT messages.
@@ -124,10 +127,6 @@ class RollMouse {
 			}
 			
 			this.UpdateHistory(axis, obj)
-			
-			if (!moved[axis]){
-				continue
-			}
 		}
 		
 		; Move information gathered, decide what to do...
@@ -137,20 +136,20 @@ class RollMouse {
 			if (moved.x || moved.y){
 				; Normal input was detected - stop rolling
 				SetTimer % fn, Off
-				this.State := this.STATE_MOVING
+				this.ChangeState(this.STATE_MOVING)
 				this.LastMove := {x: 0, y: 0}
 			}
 		} else {
 			; We are not rolling
 			if (moved.x || moved.y){
 				; A move over the threshold was detected.
-				this.State := this.STATE_MOVING
+				this.ChangeState(this.STATE_MOVING)
 				; Set timer to catch sudden stop in mouse movement
 				SetTimer % fn, % this.TimeOutRate
 			} else {
 				; Consider anything else "Stopped"
-				;this.State := this.STATE_STOPPED
-				this.State := this.STATE_MOVING	; attempted bodge to stop roll getting locked on
+				this.ChangeState(this.STATE_STOPPED)
+				SetTimer % fn, Off
 			}
 		}
 	}
@@ -172,7 +171,7 @@ class RollMouse {
 		
 		if (this.State != this.STATE_ROLLING){
 			; If roll has just started, calculate roll vector from movement history
-			this.State := this.STATE_ROLLING
+			this.ChangeState(this.STATE_ROLLING)
 			
 			this.LastMove := {x: 0, y: 0}
 			
@@ -204,7 +203,7 @@ class RollMouse {
 			return
 		}
 
-		OutputDebug % "MOVE DETECTED: `n" s "`n"
+		OutputDebug % "ROLL DETECTED: `n" s "`n"
 		while (this.State = this.STATE_ROLLING){
 			DllCall("mouse_event", "UInt", 0x01, "Int", this.LastMove.x, "Int", this.LastMove.y) ; move
 			Sleep % this.RollFreq
@@ -214,6 +213,13 @@ class RollMouse {
 	
 	InitHistory(){
 		this.History := {x: [], y: []}
+	}
+	
+	ChangeState(newstate){
+		if (this.State != newstate){
+			OutputDebug, % "Changing State to : " this.StateNames[newstate]
+			this.State := newstate
+		}
 	}
 }
 
