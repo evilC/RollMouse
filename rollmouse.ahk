@@ -131,6 +131,7 @@ class RollMouse {
 		
 		if (this.State == this.STATE_ROLLING){
 			; We are rolling
+			if (moved.x != 0 || moved.y != 0){
 				; Normal input was detected - stop rolling
 				this.ChangeState(this.STATE_MOVING)
 			}
