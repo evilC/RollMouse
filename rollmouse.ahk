@@ -10,6 +10,8 @@ ToDo:
 
 * Add GUI
   Persistent settings etc.
+* Filter mouse wheel
+  Ignore all messages that are just the wheel moving
 * Better history.
   Expire items that are too old.
   Filter outliers - eg a slight move up sometimes has a few move downs in there - keep general up motion but filter out direction inversions.
@@ -19,16 +21,16 @@ ToDo:
 class RollMouse {
 	; User configurable items
 	; The speed at which you must move the mouse to be able to trigger a roll
-	MoveThreshold := {x: 5, y: 5}
+	MoveThreshold := {x: 4, y: 4}
 	
 	; The speed at which to move the mouse, can be decimals (eg 0.5)
-	MoveFactor := {x: 0.5, y: 0.5}
-	;MoveFactor := {x: 1, y: 1}
+	; X and Y do not need to be equal
+	MoveFactor := {x: 2, y: 1}
 	
 	; How fast (in ms) to send moves when rolling.
 	; High values for this will cause rolls to appear jerky instead of smooth
 	; if you halved this, double MoveFactor to get the same move amount, but at a faster frequency.
-	RollFreq := 2
+	RollFreq := 10
 	
 	; How long to wait after each move to decide whether a roll has taken place.
 	TimeOutRate := 20
@@ -38,15 +40,15 @@ class RollMouse {
 
 	; The number of previous moves stored - used to calculate vector of a roll
 	; Higher numbers = greater fidelity, but more CPU
-	MOVE_BUFFER_SIZE := 10
+	MOVE_BUFFER_SIZE := 5
 
 	; Non user-configurable items
-	STATE_STOPPED := 1
-	STATE_MOVING := 2
+	STATE_UNDER_THRESH := 1
+	STATE_OVER_THRESH := 2
 	STATE_ROLLING := 3
-	StateNames := ["STOPPED", "MOVING", "ROLLING"]
+	StateNames := ["UNDER THRESHOLD", "OVER THRESHOLD", "ROLLING"]
 	
-	State := 0
+	State := 1
 	
 	TimeOutFunc := 0
 	History := {}	; Movement history. The most recent item is first (Index 1), and old (high index) items get pruned off the end
@@ -57,8 +59,6 @@ class RollMouse {
 		
 		; Create GUI (GUI needed to receive messages)
 		Gui, Show, w100 h100
-		
-		;this.ChangeState(this.STATE_STOPPED)
 		
 		; Set TimeOutRate to negative value to have timer only fire once.
 		this.TimeOutRate := this.TimeOutRate * -1
@@ -72,12 +72,24 @@ class RollMouse {
 		NumPut(Flags, RAWINPUTDEVICE, 4, "Uint")
 		NumPut(WinExist("A"), RAWINPUTDEVICE, 8, "Uint")
 		r := DllCall("RegisterRawInputDevices", "Ptr", &RAWINPUTDEVICE, "UInt", 1, "UInt", DevSize )
+		
 		fn := this.MouseMoved.Bind(this)
-		OnMessage(0x00FF, fn)
+		this.MoveFunc := fn
+		this.ListenForMouseMovement(1)
 		
 		; Initialize
 		this.TimeOutFunc := this.DoRoll.Bind(this)
 		this.InitHistory()
+	}
+	
+	; Turns on or off listening for mouse movement
+	ListenForMouseMovement(mode){
+		fn := this.MoveFunc
+		if (mode){
+			OnMessage(0x00FF, fn)
+		} else {
+			OnMessage(0x00FF, fn, 0)
+		}
 	}
 	
 	; Called when the mouse moved.
@@ -104,48 +116,25 @@ class RollMouse {
 		moved := {x: 0, y: 0}
 		
 		for axis in axes {
-			max := this.History[axis].Length()
 			obj := {}
-			;obj := {time: this_time}
-			;last_time := max ? this.History[axis][1].time : 0
 			obj.delta_move := NumGet(&uRawInput, offsets[axis], "Int")
 			obj.abs_delta_move := abs(obj.delta_move)
 			obj.sgn_move := (obj.abs_delta_move = obj.delta_move) ? 1 : -1
 
-			if (this.State == this.STATE_ROLLING){
-				; in STATE_ROLLING, moved = 1 means we detected any kind of mouse movement that wasn't the roll
-				if (obj.abs_delta_move != 0 && obj.abs_delta_move != abs(this.LastMove[axis])){
-					moved[axis] := 1
-				}
-			} else {
-				; in STATE_MOVING, moved = 1 means we detected a movement above the threshold in that direction
-				if (obj.abs_delta_move >= this.MoveThreshold[axis]){
-					moved[axis] := 1
-				}
+			if (obj.abs_delta_move >= this.MoveThreshold[axis]){
+				moved[axis] := 1
 			}
 			
 			this.UpdateHistory(axis, obj)
 		}
-		
-		; Move information gathered, decide what to do...
-		
-		if (this.State == this.STATE_ROLLING){
-			; We are rolling
-			if (moved.x != 0 || moved.y != 0){
-				; Normal input was detected - stop rolling
-				this.ChangeState(this.STATE_MOVING)
-			}
+
+		if (moved.x || moved.y){
+			; A move over the threshold was detected.
+			this.ChangeState(this.STATE_OVER_THRESH)
 		} else {
-			; We are not rolling
-			if (moved.x || moved.y){
-				; A move over the threshold was detected.
-				this.ChangeState(this.STATE_MOVING)
-				; Set timer to catch sudden stop in mouse movement
-			} else {
-				; Consider anything else "Stopped"
-				this.ChangeState(this.STATE_STOPPED)
-			}
+			this.ChangeState(this.STATE_UNDER_THRESH)
 		}
+
 	}
 	
 	UpdateHistory(axis, obj){
@@ -155,17 +144,17 @@ class RollMouse {
 		if (max > (this.MOVE_BUFFER_SIZE - 1)){
 			this.History[axis].RemoveAt(max, max - this.MOVE_BUFFER_SIZE)
 		}
-
 	}
+	
 	; A timeout occurred - Perform a roll
 	DoRoll(){
 		static axes := {x: 1, y: 2}
-
+		
 		s := ""
 		
 		if (this.State != this.STATE_ROLLING){
 			; If roll has just started, calculate roll vector from movement history
-			this.ChangeState(this.STATE_ROLLING)
+			this.LastMove := {x: 0, y: 0}
 			
 			for axis in axes {
 				s .= axis ": "
@@ -194,10 +183,20 @@ class RollMouse {
 		if (this.LastMove.x = 0 && this.LastMove.y = 0){
 			return
 		}
+		this.ChangeState(this.STATE_ROLLING)
 
 		OutputDebug % "ROLL DETECTED: `n" s "Rolling x: " this.LastMove.x ", y: " this.LastMove.y "`n`n"
-		while (this.State = this.STATE_ROLLING){
+		fn := this.MoveFunc
+		while (this.State == this.STATE_ROLLING){
+			; Disable listening for mouse movement (so the output we are about to make is not seen as input)
+			this.ListenForMouseMovement(0)
+			; Send output
 			DllCall("mouse_event", "UInt", 0x01, "Int", this.LastMove.x, "Int", this.LastMove.y) ; move
+			; Hand control to next thread (allow move to take place)
+			Sleep 0
+			; Turn on listening for mouse movement
+			this.ListenForMouseMovement(1)
+			; Wait for a bit (allow real mouse movement to be detected, which will turn off roll)
 			Sleep % this.RollFreq
 		}
 		
@@ -213,14 +212,23 @@ class RollMouse {
 			OutputDebug, % "Changing State to : " this.StateNames[newstate]
 			this.State := newstate
 		}
-		if (this.State = this.STATE_STOPPED){
+		
+		; DO NOT return if this.State == newstate!
+		; We need to reset the timer!
+		
+		if (this.State = this.STATE_UNDER_THRESH){
+			; Kill the timer
 			SetTimer % fn, Off
+			; Clear the history
 			this.InitHistory()
-		} else if (this.State = this.STATE_MOVING){
+		} else if (this.State = this.STATE_OVER_THRESH){
+			; Mouse is moving fast - start timer to detect sudden stop in messages (mouse was lifted in motion)
 			SetTimer % fn, % this.TimeOutRate
-		} else if (this.State = this.STATE_ROLLING){
-			this.LastMove := {x: 0, y: 0}
 		}
+		/* else if (this.State = this.STATE_ROLLING){
+			;this.LastMove := {x: 0, y: 0}
+		}
+		*/
 	}
 }
 
@@ -236,12 +244,6 @@ Sgn(val){
 
 return
 
-F11::
-	; Temporary bodge - set state back to stopped
-	rm.ChangeState(rm.STATE_STOPPED)
-	return
-
-;Esc::
 F12::
 GuiClose:
 ExitApp
