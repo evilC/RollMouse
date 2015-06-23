@@ -177,6 +177,8 @@ class RollMouse {
 				}
 				s .= "(" trend ")`n"
 				/*
+				Disabled, as seems to break mouse trackpads.
+				Also seems to stop MoveFactor being applied to both axes?
 				if (sgn(trend) != sgn(this.History[axis][1].delta_move)){
 					; downward trend of move speed detected - this is probably a normal stop of the mouse, not a lift
 					continue
