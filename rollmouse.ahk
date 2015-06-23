@@ -22,10 +22,14 @@ class RollMouse {
 	; User configurable items
 	; The speed at which you must move the mouse to be able to trigger a roll
 	MoveThreshold := {x: 4, y: 4}
+	; Good value for my mouse with FPS games: 4
+	; Good value for my laptop trackpad: 3
 	
 	; The speed at which to move the mouse, can be decimals (eg 0.5)
 	; X and Y do not need to be equal
+	; Good value for my mouse with FPS games: x:2, y: 1 (don't need vertical roll so much)
 	MoveFactor := {x: 2, y: 1}
+	; Good value for my laptop trackpad: 0.2
 	
 	; How fast (in ms) to send moves when rolling.
 	; High values for this will cause rolls to appear jerky instead of smooth
@@ -172,10 +176,12 @@ class RollMouse {
 					s .= this.History[axis][A_Index].delta_move ","
 				}
 				s .= "(" trend ")`n"
+				/*
 				if (sgn(trend) != sgn(this.History[axis][1].delta_move)){
 					; downward trend of move speed detected - this is probably a normal stop of the mouse, not a lift
 					continue
 				}
+				*/
 				this.LastMove[axis] := round(this.LastMove[axis] * this.MoveFactor[axis])
 			}
 		}
