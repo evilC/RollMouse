@@ -1,0 +1,5 @@
+1.0.0 - 24th June 2015
+
+1.0.1 - 24th June 2015
++ Fix for Minimize On Start option breaking roll.
++ Improvement of mouse_event call, as per suggestion by jNizM - thank you!

@@ -18,7 +18,7 @@ ADHD := new ADHDLib
 ; Ensure running as admin
 ADHD.run_as_admin()
 
-ADHD.config_about({name: "Rollmouse", version: "1.0.0", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>"})
+ADHD.config_about({name: "Rollmouse", version: "1.0.1", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>"})
 
 ADHD.config_size(375,230)
 
