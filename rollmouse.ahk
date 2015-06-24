@@ -1,10 +1,5 @@
 ; Requires AHK >= 1.1.21.00
 
-#SingleInstance force
-rm := new RollMouse()
-
-OutputDebug, DBGVIEWCLEAR
-
 /*
 ToDo:
 
@@ -18,6 +13,81 @@ ToDo:
   Clear history on change of direction?
 
 */
+
+#SingleInstance force
+ADHD := new ADHDLib
+
+; Ensure running as admin
+ADHD.run_as_admin()
+
+ADHD.config_about({name: "Rollmouse", version: "1.0.0", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>"})
+; The default application to limit hotkeys to.
+; Starts disabled by default, so no danger setting to whatever you want
+;ADHD.config_limit_app("CryENGINE")
+
+; GUI size
+ADHD.config_size(375,230)
+
+ADHD.config_hotkey_add({uiname: "Quit", subroutine: "Quit"})
+; Configure update notifications:
+;ADHD.config_updates("http://evilc.com/files/ahk/mwo/firectrl/firectrl.au.txt")
+
+ADHD.config_event("option_changed", "option_changed_hook")
+
+ADHD.init()
+ADHD.create_gui()
+
+Gui, Tab, 1
+
+row := 40
+
+Gui, Font, italic
+Gui, Add, Text, x10 y%row%, Move Factor controls how fast the mouse will be moved in any given`ndirection when you perform a roll. Decimals (eg 0.5) are permissible.
+Gui, Font
+row += 30
+
+Gui, Add, Text, x10 y%row%, Move Factor:
+Gui, Add, Text, x120 yp, x
+ADHD.gui_add("Edit", "MoveFactorX", "xp+10 yp-2 W50", "", "1")
+Gui, Add, Text, xp+80 yp+2, y
+ADHD.gui_add("Edit", "MoveFactorY", "xp+10 yp-2 W50", "", "1")
+
+row += 30
+Gui, Font, italic
+Gui, Add, Text, x10 y%row%, Move Threshold controls how fast you have to move the mouse`nto perform a roll. Decimals are NOT permitted.
+Gui, Font
+row += 30
+Gui, Add, Text, x10 y%row%, Move Threshold:
+Gui, Add, Text, x120 yp, x
+ADHD.gui_add("Edit", "MoveThreshX", "xp+10 yp-2 W50", "", "4")
+Gui, Add, Text, xp+80 yp+2, y
+ADHD.gui_add("Edit", "MoveThreshY", "xp+10 yp-2 W50", "", "4")
+
+row += 30
+ADHD.gui_add("CheckBox", "MinimizeOnStart", "x10 y" row, "Minimize on StartUp", 0)
+
+ADHD.finish_startup()
+
+if (MinimizeOnStart){
+	WinMinimize, A
+}
+
+rm := new RollMouse
+option_changed_hook()
+
+OutputDebug, DBGVIEWCLEAR
+
+option_changed_hook(){
+	global MoveFactorX, MoveFactorY, MoveThreshX, MoveThreshY
+	global rm
+	rm.MoveFactor.x := MoveFactorX
+	rm.MoveFactor.y := MoveFactorY
+	rm.MoveThreshold.x := MoveThreshX
+	rm.MoveThreshold.y := MoveThreshY
+}
+
+return
+
 class RollMouse {
 	; User configurable items
 	; The speed at which you must move the mouse to be able to trigger a roll
@@ -28,13 +98,13 @@ class RollMouse {
 	; The speed at which to move the mouse, can be decimals (eg 0.5)
 	; X and Y do not need to be equal
 	; Good value for my mouse with FPS games: x:2, y: 1 (don't need vertical roll so much)
-	MoveFactor := {x: 2, y: 1}
+	MoveFactor := {x: 1, y: 1}
 	; Good value for my laptop trackpad: 0.2
 	
 	; How fast (in ms) to send moves when rolling.
 	; High values for this will cause rolls to appear jerky instead of smooth
 	; if you halved this, double MoveFactor to get the same move amount, but at a faster frequency.
-	RollFreq := 10
+	RollFreq := 1
 	
 	; How long to wait after each move to decide whether a roll has taken place.
 	TimeOutRate := 20
@@ -62,7 +132,7 @@ class RollMouse {
 		static RIDEV_INPUTSINK := 0x00000100
 		
 		; Create GUI (GUI needed to receive messages)
-		Gui, Show, w100 h100
+		;Gui, Show, w100 h100
 		
 		; Set TimeOutRate to negative value to have timer only fire once.
 		this.TimeOutRate := this.TimeOutRate * -1
@@ -250,8 +320,8 @@ Sgn(val){
 	}
 }
 
-return
+Quit:
+	ExitApp
+	return
 
-F12::
-GuiClose:
-ExitApp
+#Include <adhdlib>
