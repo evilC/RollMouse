@@ -262,7 +262,7 @@ class RollMouse {
 			; Disable listening for mouse movement (so the output we are about to make is not seen as input)
 			this.ListenForMouseMovement(0)
 			; Send output
-			DllCall("mouse_event", "UInt", 0x01, "Int", this.LastMove.x, "Int", this.LastMove.y) ; move
+			DllCall("user32.dll\mouse_event", "UInt", 0x0001, "UInt", this.LastMove.x, "UInt", this.LastMove.y, "UInt", 0, "UPtr", 0)
 			; Hand control to next thread (allow move to take place)
 			Sleep 0
 			; Turn on listening for mouse movement
