@@ -3,8 +3,6 @@
 /*
 ToDo:
 
-* Add GUI
-  Persistent settings etc.
 * Filter mouse wheel
   Ignore all messages that are just the wheel moving
 * Better history.
@@ -21,16 +19,10 @@ ADHD := new ADHDLib
 ADHD.run_as_admin()
 
 ADHD.config_about({name: "Rollmouse", version: "1.0.0", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>"})
-; The default application to limit hotkeys to.
-; Starts disabled by default, so no danger setting to whatever you want
-;ADHD.config_limit_app("CryENGINE")
 
-; GUI size
 ADHD.config_size(375,230)
 
 ADHD.config_hotkey_add({uiname: "Quit", subroutine: "Quit"})
-; Configure update notifications:
-;ADHD.config_updates("http://evilc.com/files/ahk/mwo/firectrl/firectrl.au.txt")
 
 ADHD.config_event("option_changed", "option_changed_hook")
 
@@ -75,7 +67,7 @@ if (MinimizeOnStart){
 rm := new RollMouse
 option_changed_hook()
 
-OutputDebug, DBGVIEWCLEAR
+;OutputDebug, DBGVIEWCLEAR
 
 option_changed_hook(){
 	global MoveFactorX, MoveFactorY, MoveThreshX, MoveThreshY
@@ -224,14 +216,14 @@ class RollMouse {
 	DoRoll(){
 		static axes := {x: 1, y: 2}
 		
-		s := ""
+		;s := ""
 		
 		if (this.State != this.STATE_ROLLING){
 			; If roll has just started, calculate roll vector from movement history
 			this.LastMove := {x: 0, y: 0}
 			
 			for axis in axes {
-				s .= axis ": "
+				;s .= axis ": "
 				trend := 0
 				if (this.History[axis].Length() < this.MOVE_BUFFER_SIZE){
 					; ignore gestures that are too short
@@ -245,7 +237,7 @@ class RollMouse {
 					this.LastMove[axis] += this.History[axis][A_Index].delta_move
 					s .= this.History[axis][A_Index].delta_move ","
 				}
-				s .= "(" trend ")`n"
+				;s .= "(" trend ")`n"
 				/*
 				Disabled, as seems to break mouse trackpads.
 				Also seems to stop MoveFactor being applied to both axes?
@@ -263,7 +255,7 @@ class RollMouse {
 		}
 		this.ChangeState(this.STATE_ROLLING)
 
-		OutputDebug % "ROLL DETECTED: `n" s "Rolling x: " this.LastMove.x ", y: " this.LastMove.y "`n`n"
+		;OutputDebug % "ROLL DETECTED: `n" s "Rolling x: " this.LastMove.x ", y: " this.LastMove.y "`n`n"
 		fn := this.MoveFunc
 		while (this.State == this.STATE_ROLLING){
 			; Disable listening for mouse movement (so the output we are about to make is not seen as input)
@@ -287,7 +279,7 @@ class RollMouse {
 	ChangeState(newstate){
 		fn := this.TimeOutFunc
 		if (this.State != newstate){
-			OutputDebug, % "Changing State to : " this.StateNames[newstate]
+			;OutputDebug, % "Changing State to : " this.StateNames[newstate]
 			this.State := newstate
 		}
 		
