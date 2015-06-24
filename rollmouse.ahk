@@ -60,11 +60,12 @@ ADHD.gui_add("CheckBox", "MinimizeOnStart", "x10 y" row, "Minimize on StartUp", 
 
 ADHD.finish_startup()
 
+rm := new RollMouse
+
 if (MinimizeOnStart){
 	WinMinimize, A
 }
 
-rm := new RollMouse
 option_changed_hook()
 
 ;OutputDebug, DBGVIEWCLEAR
