@@ -13,7 +13,12 @@ With RollMouse, you can set your sensitivity low, but still easily generate larg
 RollMouse is compatible with all optical mice (ie most "normal" mice on the market) and laptop trackpads.
 
 ##Why would I want it?
-Primarily intended for games with mouse aiming, but also it is useful for normal Windows operation if you have multiple monitors or a laptop with a trackpad.
+###Games
+Many mouse have "DPI Shift" / "Sniper Mode" buttons, but these often require sacrificing a button on your mouse in order to use them, and are often impractical to use. Setting your mouse to drop DPI while you hold the aim button is probably the most practical, but shifting DPI mid-game is not going to help your Muscle Memory.  
+###Windows
+If you have a large desktop area (ie Multiple Monitors), moving the mouse around can be a chore.  
+If you use a laptop with a trackpad, you probably hate having to make lots of small movements to generate a long movement in one direction.  
+*Note: If you use RollMouse on a laptop, I strongly recommend also turning on "Pointer Trails" else it can be hard to keep track of the mouse pointer when RollMouse moves it. This option can be enabled by going to Control Panel > Mouse > Pointer Options tab > Display Pointer Trails.*
 
 ##How do I use it?
 First off, some definitions, or this will get confusing ;)  
@@ -30,11 +35,11 @@ With RollMouse, however, the mouse cursor **keeps moving** while you are reposit
 
 ##How does it work?
 RollMouse makes use of the laws of physics.  
-If you move a mouse across a surface, no matter how quickly you stop moving the mouse, the movement will "tail off" - ie you start off moving fast and the mouse is sending "5,5,5,5".  
-You then stop, and the mouse will report like "5,4,3,2,1"  
+If you move a mouse across a surface, no matter how quickly you stop moving the mouse, the movement will "tail off" - ie you start off moving fast and the mouse is sending "5, 5 , 5, 5, [...]".  
+You then stop, and the mouse will report like "5, 4, 3, 2, 1, 0"  
 You cannot avoid this - the laws of intertia mean you cannot stop an object with mass instantly.
 
-However, if you lift the device off the surface whilst in motion, as soon as the mouse reaches a certain height, the sensor stops getting any readings at all - so the mouse will report like "5,5,5,4,0"  
+However, if you lift the device off the surface whilst in motion, as soon as the mouse reaches a certain height, the sensor stops getting any readings at all - so the mouse will report like "5, 5, 5, 5, 0"  
 
 ##How do I run it?
 Download RollMouse.exe and run it - it's as simple as that.  
