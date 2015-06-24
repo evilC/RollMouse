@@ -41,6 +41,8 @@ You cannot avoid this - the laws of intertia mean you cannot stop an object with
 
 However, if you lift the device off the surface whilst in motion, as soon as the mouse reaches a certain height, the sensor stops getting any readings at all - so the mouse will report like "5, 5, 5, 5, 0"  
 
+Thus, RollMouse can detect the difference between a normal move and a "flick and lift" gesture.
+
 ##How do I run it?
 Download RollMouse.exe and run it - it's as simple as that.  
 There is also a source code version (RollMouse.ahk) which you would need AutoHotkey installed (Plus a library) to use.  
