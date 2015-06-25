@@ -18,7 +18,7 @@ ADHD := new ADHDLib
 ; Ensure running as admin
 ADHD.run_as_admin()
 
-ADHD.config_about({name: "Rollmouse", version: "1.0.1", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>"})
+ADHD.config_about({name: "Rollmouse", version: "1.0.2", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>"})
 
 ADHD.config_size(375,230)
 
@@ -138,7 +138,7 @@ class RollMouse {
 		Flags := RIDEV_INPUTSINK
 		NumPut(Flags, RAWINPUTDEVICE, 4, "Uint")
 		NumPut(WinExist("A"), RAWINPUTDEVICE, 8, "Uint")
-		r := DllCall("RegisterRawInputDevices", "Ptr", &RAWINPUTDEVICE, "UInt", 1, "UInt", DevSize )
+		r := DllCall("user32.dll\RegisterRawInputDevices", "Ptr", &RAWINPUTDEVICE, "UInt", 1, "UInt", DevSize )
 		
 		fn := this.MouseMoved.Bind(this)
 		this.MoveFunc := fn
@@ -173,12 +173,12 @@ class RollMouse {
 		
 		; Find size of rawinput data - only needs to be run the first time.
 		if (!iSize){
-			r := DllCall("GetRawInputData", "UInt", lParam, "UInt", 0x10000003, "Ptr", 0, "UInt*", iSize, "UInt", 8 + (A_PtrSize * 2))
+			r := DllCall("user32.dll\GetRawInputData", "Ptr", lParam, "UInt", 0x10000003, "Ptr", 0, "UInt*", iSize, "UInt", 8 + (A_PtrSize * 2))
 			VarSetCapacity(uRawInput, iSize)
 		}
 		sz := iSize	; param gets overwritten with # of bytes output, so preserve iSize
 		; Get RawInput data
-		r := DllCall("GetRawInputData", "UInt", lParam, "UInt", 0x10000003, "Ptr", &uRawInput, "UInt*", sz, "UInt", 8 + (A_PtrSize * 2))
+		r := DllCall("user32.dll\GetRawInputData", "Ptr", lParam, "UInt", 0x10000003, "Ptr", &uRawInput, "UInt*", sz, "UInt", 8 + (A_PtrSize * 2))
 		
 		moved := {x: 0, y: 0}
 		

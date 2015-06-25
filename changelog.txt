@@ -3,3 +3,6 @@
 1.0.1 - 24th June 2015
 + Fix for Minimize On Start option breaking roll.
 + Improvement of mouse_event call, as per suggestion by jNizM - thank you!
+
+1.0.2 - 25th June 2015
++ Fix incorrect datatype for hRawInput callin GetRawInputData
