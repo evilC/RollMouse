@@ -9,3 +9,4 @@
 
 1.0.3 - 28th June 2015
 + No longer tries to run as admin.
++ Now minimizes to tray.
