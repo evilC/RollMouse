@@ -6,3 +6,6 @@
 
 1.0.2 - 25th June 2015
 + Fix incorrect datatype for hRawInput callin GetRawInputData
+
+1.0.3 - 28th June 2015
++ No longer tries to run as admin.
