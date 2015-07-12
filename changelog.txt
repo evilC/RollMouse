@@ -10,3 +10,6 @@
 1.0.3 - 28th June 2015
 + No longer tries to run as admin.
 + Now minimizes to tray.
+
+1.0.4 - 12th July 2015
++ No functionality changes, just added homepage link and update notifications.
