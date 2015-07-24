@@ -3,8 +3,6 @@
 /*
 ToDo:
 
-* Filter mouse wheel
-  Ignore all messages that are just the wheel moving
 * Better history.
   Expire items that are too old.
   Filter outliers - eg a slight move up sometimes has a few move downs in there - keep general up motion but filter out direction inversions.
@@ -15,7 +13,7 @@ ToDo:
 #SingleInstance force
 ADHD := new ADHDLib
 
-ADHD.config_about({name: "Rollmouse", version: "1.0.4", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>    /   <a href=""http://ahkscript.org/boards/viewtopic.php?f=6&t=8439"">Discussion Thread</a>"})
+ADHD.config_about({name: "Rollmouse", version: "1.0.5", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>    /   <a href=""http://ahkscript.org/boards/viewtopic.php?f=6&t=8439"">Discussion Thread</a>"})
 ADHD.config_updates("http://evilc.com/files/ahk/adhd/rollmouse.au.txt")
 
 ADHD.config_size(375,230)
@@ -171,9 +169,9 @@ class RollMouse {
 		static MAX_TIME := 1000000		; Only cache values for this long.
 		
 		Critical
-		
+
 		; RawInput statics
-		static DeviceSize := 2 * A_PtrSize, iSize := 0, sz := 0, offsets := {x: (20+A_PtrSize*2), y: (24+A_PtrSize*2)}, uRawInput
+		static DeviceSize := 2 * A_PtrSize, iSize := 0, sz := 0, offsets := {x: (20+A_PtrSize*2), y: (24+A_PtrSize*2), button: (18+A_PtrSize*2)}, uRawInput
 		
 		static axes := {x: 1, y: 2}
 		
@@ -185,7 +183,12 @@ class RollMouse {
 		sz := iSize	; param gets overwritten with # of bytes output, so preserve iSize
 		; Get RawInput data
 		r := DllCall("user32.dll\GetRawInputData", "Ptr", lParam, "UInt", 0x10000003, "Ptr", &uRawInput, "UInt*", sz, "UInt", 8 + (A_PtrSize * 2))
-		
+
+		; ignore button activity
+		if (NumGet(&uRawInput, offsets.button, "Int") == 0){
+			return
+		}
+
 		moved := {x: 0, y: 0}
 		
 		for axis in axes {

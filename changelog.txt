@@ -13,3 +13,6 @@
 
 1.0.4 - 12th July 2015
 + No functionality changes, just added homepage link and update notifications.
+
+1.0.5 - 25th Jul 2015
++ Now ignores button and wheel activity.
