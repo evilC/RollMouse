@@ -44,5 +44,5 @@ However, if you lift the device off the surface whilst in motion, as soon as the
 Thus, RollMouse can detect the difference between a normal move and a "flick and lift" gesture.
 
 ##How do I run it?
-Download RollMouse.exe and run it - it's as simple as that.  
+Download RollMouse.exe from the [releases page](https://github.com/evilC/RollMouse/releases) and run it - it's as simple as that.  
 There is also a source code version (RollMouse.ahk) which you would need AutoHotkey installed (Plus a library) to use.  
