@@ -104,7 +104,7 @@ class RollMouse {
 	RollFreq := 1
 	
 	; How long to wait after each move to decide whether a roll has taken place.
-	TimeOutRate := 20
+	TimeOutRate := 50
 	
 	; The amount that we are currently rolling by
 	LastMove := {x: 0, y: 0}
