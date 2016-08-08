@@ -16,3 +16,6 @@
 
 1.0.5 - 25th Jul 2015
 + Now ignores button and wheel activity.
+
+1.0.6 - 8th Aug 2016
++ Uses better technique for filtering output from input.

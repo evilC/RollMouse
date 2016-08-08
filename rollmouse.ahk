@@ -168,13 +168,15 @@ class RollMouse {
 	MouseMoved(wParam, lParam, code){
 		static MAX_TIME := 1000000		; Only cache values for this long.
 		
-		Critical
-
 		; RawInput statics
 		static DeviceSize := 2 * A_PtrSize, iSize := 0, sz := 0, offsets := {x: (20+A_PtrSize*2), y: (24+A_PtrSize*2), button: (18+A_PtrSize*2)}, uRawInput
 		
 		static axes := {x: 1, y: 2}
-		
+
+		Critical
+		VarSetCapacity(raw, 40, 0)
+		If (!DllCall("GetRawInputData",uint,lParam,uint,0x10000003,uint,&raw,"uint*",40,uint, 16) || ErrorLevel || !NumGet(raw, 8))
+			Return 0	; Ignore events with a Device ID of 0 - these are mouse movements we sent using mouse_event
 		; Find size of rawinput data - only needs to be run the first time.
 		if (!iSize){
 			r := DllCall("user32.dll\GetRawInputData", "Ptr", lParam, "UInt", 0x10000003, "Ptr", 0, "UInt*", iSize, "UInt", 8 + (A_PtrSize * 2))
@@ -268,14 +270,8 @@ class RollMouse {
 		;OutputDebug % "ROLL DETECTED: `n" s "Rolling x: " this.LastMove.x ", y: " this.LastMove.y "`n`n"
 		fn := this.MoveFunc
 		while (this.State == this.STATE_ROLLING){
-			; Disable listening for mouse movement (so the output we are about to make is not seen as input)
-			this.ListenForMouseMovement(0)
 			; Send output
 			DllCall("user32.dll\mouse_event", "UInt", 0x0001, "UInt", this.LastMove.x, "UInt", this.LastMove.y, "UInt", 0, "UPtr", 0)
-			; Hand control to next thread (allow move to take place)
-			Sleep 0
-			; Turn on listening for mouse movement
-			this.ListenForMouseMovement(1)
 			; Wait for a bit (allow real mouse movement to be detected, which will turn off roll)
 			Sleep % this.RollFreq
 		}
