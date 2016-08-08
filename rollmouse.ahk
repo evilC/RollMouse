@@ -13,7 +13,7 @@ ToDo:
 #SingleInstance force
 ADHD := new ADHDLib
 
-ADHD.config_about({name: "Rollmouse", version: "1.0.5", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>    /   <a href=""http://ahkscript.org/boards/viewtopic.php?f=6&t=8439"">Discussion Thread</a>"})
+ADHD.config_about({name: "Rollmouse", version: "1.0.6", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>    /   <a href=""http://ahkscript.org/boards/viewtopic.php?f=6&t=8439"">Discussion Thread</a>"})
 ADHD.config_updates("http://evilc.com/files/ahk/adhd/rollmouse.au.txt")
 
 ADHD.config_size(375,230)
