@@ -11,9 +11,9 @@ ToDo:
 */
 
 #SingleInstance force
-ADHD := new ADHDLib
+global ADHD := new ADHDLib
 
-ADHD.config_about({name: "Rollmouse", version: "1.0.6", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>    /   <a href=""http://ahkscript.org/boards/viewtopic.php?f=6&t=8439"">Discussion Thread</a>"})
+ADHD.config_about({name: "Rollmouse", version: "1.0.7", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>    /   <a href=""http://ahkscript.org/boards/viewtopic.php?f=6&t=8439"">Discussion Thread</a>"})
 ADHD.config_updates("http://evilc.com/files/ahk/adhd/rollmouse.au.txt")
 
 ADHD.config_size(375,230)
@@ -21,6 +21,7 @@ ADHD.config_size(375,230)
 ADHD.config_hotkey_add({uiname: "Quit", subroutine: "Quit"})
 
 ADHD.config_event("option_changed", "option_changed_hook")
+ADHD.config_event("functionality_toggled", "functionality_toggle_hook")
 
 ADHD.init()
 ADHD.create_gui()
@@ -58,7 +59,7 @@ ADHD.gui_add("CheckBox", "MinimizeOnStart", "x10 y" row, "Minimize on StartUp", 
 
 ADHD.finish_startup()
 
-rm := new RollMouse
+global rm := new RollMouse
 
 Gui1 := WinExist()
 Menu("Tray","Nostandard"), Menu("Tray","Add","Restore","GuiShow"), Menu("Tray","Add")
@@ -76,11 +77,14 @@ option_changed_hook()
 
 option_changed_hook(){
 	global MoveFactorX, MoveFactorY, MoveThreshX, MoveThreshY
-	global rm
 	rm.MoveFactor.x := MoveFactorX
 	rm.MoveFactor.y := MoveFactorY
 	rm.MoveThreshold.x := MoveThreshX
 	rm.MoveThreshold.y := MoveThreshY
+}
+
+functionality_toggle_hook(){
+	rm.ListenForMouseMovement(ADHD.private.functionality_enabled)
 }
 
 return

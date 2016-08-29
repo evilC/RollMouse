@@ -19,3 +19,6 @@
 
 1.0.6 - 8th Aug 2016
 + Uses better technique for filtering output from input.
+
+1.0.7 - 29th Aug 2016
++ Functionality toggle binding now enables/disables RollMouse
