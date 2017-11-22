@@ -22,3 +22,6 @@
 
 1.0.7 - 29th Aug 2016
 + Functionality toggle binding now enables/disables RollMouse
+
+1.0.8 - 23rd Nov 2017
++ Added "Friction" option to make Rolls tail off

@@ -13,7 +13,7 @@ ToDo:
 #SingleInstance force
 global ADHD := new ADHDLib
 
-ADHD.config_about({name: "Rollmouse", version: "1.0.7", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>    /   <a href=""http://ahkscript.org/boards/viewtopic.php?f=6&t=8439"">Discussion Thread</a>"})
+ADHD.config_about({name: "Rollmouse", version: "1.0.8", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>    /   <a href=""http://ahkscript.org/boards/viewtopic.php?f=6&t=8439"">Discussion Thread</a>"})
 ADHD.config_updates("http://evilc.com/files/ahk/adhd/rollmouse.au.txt")
 
 ADHD.config_size(375,230)
@@ -55,7 +55,9 @@ Gui, Add, Text, xp+80 yp+2, y
 ADHD.gui_add("Edit", "MoveThreshY", "xp+10 yp-2 W50", "", "4")
 
 row += 30
-ADHD.gui_add("CheckBox", "MinimizeOnStart", "x10 y" row, "Minimize on StartUp", 0)
+ADHD.gui_add("CheckBox", "MinimizeOnStart", "x10 y" row + 3, "Minimize on StartUp", 0)
+Gui, Add, Text, % "x+30 y" row + 3, Friction
+ADHD.gui_add("Edit", "Friction", "x+5 y" row, "Friction", 0)
 
 ADHD.finish_startup()
 
@@ -76,11 +78,12 @@ option_changed_hook()
 ;OutputDebug, DBGVIEWCLEAR
 
 option_changed_hook(){
-	global MoveFactorX, MoveFactorY, MoveThreshX, MoveThreshY
+	global MoveFactorX, MoveFactorY, MoveThreshX, MoveThreshY, Friction
 	rm.MoveFactor.x := MoveFactorX
 	rm.MoveFactor.y := MoveFactorY
 	rm.MoveThreshold.x := MoveThreshX
 	rm.MoveThreshold.y := MoveThreshY
+	rm.Friction := Friction
 }
 
 functionality_toggle_hook(){
@@ -276,10 +279,31 @@ class RollMouse {
 		while (this.State == this.STATE_ROLLING){
 			; Send output
 			DllCall("user32.dll\mouse_event", "UInt", 0x0001, "UInt", this.LastMove.x, "UInt", this.LastMove.y, "UInt", 0, "UPtr", 0)
+			if (this.Friction){
+				this.LastMove.x := this.ApplyFriction(this.LastMove.x, this.Friction)
+				this.LastMove.y := this.ApplyFriction(this.LastMove.y, this.Friction)
+				if (this.LastMove.x == 0 && this.LastMove.y == 0){
+					this.State := this.STATE_UNDER_THRESH
+					break
+				}
+			}
 			; Wait for a bit (allow real mouse movement to be detected, which will turn off roll)
 			Sleep % this.RollFreq
 		}
 		
+	}
+	
+	ApplyFriction(value, Friction){
+		if (value < 0){
+			was_negative := true
+			value *= -1
+		}
+		value -= Friction
+		if (value < 0)
+			value := 0
+		if (was_negative)
+			value *= -1
+		return value
 	}
 	
 	InitHistory(){
