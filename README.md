@@ -2,7 +2,7 @@
 
 ![ScreenShot](https://github.com/evilC/RollMouse/blob/master/rollmouse.png?raw=true)
 
-##What does it do?
+## What does it do?
 
 RollMouse is intended to solve the issue of having to compromise between low sensitivity (High accuracy, but hard to generate large mouse movements) and high sensitivity (Can generate large mouse movements easily, but accuracy suffers).  
 
@@ -12,15 +12,15 @@ With RollMouse, you can set your sensitivity low, but still easily generate larg
 
 RollMouse is compatible with all optical mice (ie most "normal" mice on the market) and laptop trackpads.
 
-##Why would I want it?
-###Games
+## Why would I want it?
+### Games
 Many mouse have "DPI Shift" / "Sniper Mode" buttons, but these often require sacrificing a button on your mouse in order to use them, and are often impractical to use. Setting your mouse to drop DPI while you hold the aim button is probably the most practical, but shifting DPI mid-game is not going to help your Muscle Memory.  
-###Windows
+### Windows
 If you have a large desktop area (ie Multiple Monitors), moving the mouse around can be a chore.  
 If you use a laptop with a trackpad, you probably hate having to make lots of small movements to generate a long movement in one direction.  
 *Note: If you use RollMouse on a laptop, I strongly recommend also turning on "Pointer Trails" else it can be hard to keep track of the mouse pointer when RollMouse moves it. This option can be enabled by going to Control Panel > Mouse > Pointer Options tab > Display Pointer Trails.*
 
-##How do I use it?
+## How do I use it?
 First off, some definitions, or this will get confusing ;)  
 With a mouse, the "surface" is the mouse mat, and the "device" is the mouse.  
 With a trackpad, the "surface" is the trackpad, and the "device" is your finger.  
@@ -33,7 +33,7 @@ When it does this, the direction and speed that it moves the mouse is proportion
 Use of RollMouse is very intuitive - many people already lift while moving, in order to reposition the mouse when it reaches the edge of the mat.  
 With RollMouse, however, the mouse cursor **keeps moving** while you are repositioning the mouse.  
 
-##How does it work?
+## How does it work?
 RollMouse makes use of the laws of physics.  
 If you move a mouse across a surface, no matter how quickly you stop moving the mouse, the movement will "tail off" - ie you start off moving fast and the mouse is sending "5, 5 , 5, 5, [...]".  
 You then stop, and the mouse will report like "5, 4, 3, 2, 1, 0"  
