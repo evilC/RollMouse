@@ -14,7 +14,7 @@ ToDo:
 global ADHD := new ADHDLib
 
 ADHD.config_about({name: "Rollmouse", version: "1.0.8", author: "evilC", link: "<a href=""https://github.com/evilC/RollMouse"">GitHub Page</a>    /   <a href=""http://ahkscript.org/boards/viewtopic.php?f=6&t=8439"">Discussion Thread</a>"})
-ADHD.config_updates("http://evilc.com/files/ahk/adhd/rollmouse.au.txt")
+ADHD.config_updates("https://raw.githubusercontent.com/evilC/RollMouse/refs/heads/master/rollmouse.au.txt")
 
 ADHD.config_size(375,230)
 
