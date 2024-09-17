@@ -98,21 +98,21 @@ class RollMouse {
 	MoveThreshold := {x: 4, y: 4}
 	; Good value for my mouse with FPS games: 4
 	; Good value for my laptop trackpad: 3
-	
+
 	; The speed at which to move the mouse, can be decimals (eg 0.5)
 	; X and Y do not need to be equal
 	; Good value for my mouse with FPS games: x:2, y: 1 (don't need vertical roll so much)
 	MoveFactor := {x: 1, y: 1}
 	; Good value for my laptop trackpad: 0.2
-	
+
 	; How fast (in ms) to send moves when rolling.
 	; High values for this will cause rolls to appear jerky instead of smooth
 	; if you halved this, double MoveFactor to get the same move amount, but at a faster frequency.
 	RollFreq := 1
-	
+
 	; How long to wait after each move to decide whether a roll has taken place.
 	TimeOutRate := 50
-	
+
 	; The amount that we are currently rolling by
 	LastMove := {x: 0, y: 0}
 
@@ -125,22 +125,22 @@ class RollMouse {
 	STATE_OVER_THRESH := 2
 	STATE_ROLLING := 3
 	StateNames := ["UNDER THRESHOLD", "OVER THRESHOLD", "ROLLING"]
-	
+
 	State := 1
-	
+
 	TimeOutFunc := 0
 	History := {}	; Movement history. The most recent item is first (Index 1), and old (high index) items get pruned off the end
-	
+
 	; Called on startup.
 	__New(){
 		static RIDEV_INPUTSINK := 0x00000100
-		
+
 		; Create GUI (GUI needed to receive messages)
 		;Gui, Show, w100 h100
-		
+
 		; Set TimeOutRate to negative value to have timer only fire once.
 		this.TimeOutRate := this.TimeOutRate * -1
-		
+
 		; Register mouse for WM_INPUT messages.
 		DevSize := 8 + A_PtrSize
 		VarSetCapacity(RAWINPUTDEVICE, DevSize)
@@ -150,16 +150,16 @@ class RollMouse {
 		NumPut(Flags, RAWINPUTDEVICE, 4, "Uint")
 		NumPut(WinExist("A"), RAWINPUTDEVICE, 8, "Uint")
 		r := DllCall("user32.dll\RegisterRawInputDevices", "Ptr", &RAWINPUTDEVICE, "UInt", 1, "UInt", DevSize )
-		
+
 		fn := this.MouseMoved.Bind(this)
 		this.MoveFunc := fn
 		this.ListenForMouseMovement(1)
-		
+
 		; Initialize
 		this.TimeOutFunc := this.DoRoll.Bind(this)
 		this.InitHistory()
 	}
-	
+
 	; Turns on or off listening for mouse movement
 	ListenForMouseMovement(mode){
 		fn := this.MoveFunc
@@ -169,15 +169,15 @@ class RollMouse {
 			OnMessage(0x00FF, fn, 0)
 		}
 	}
-	
+
 	; Called when the mouse moved.
 	; Messages tend to contain small (+/- 1) movements, and happen frequently (~20ms)
 	MouseMoved(wParam, lParam, code){
 		static MAX_TIME := 1000000		; Only cache values for this long.
-		
+
 		; RawInput statics
 		static DeviceSize := 2 * A_PtrSize, iSize := 0, sz := 0, offsets := {x: (20+A_PtrSize*2), y: (24+A_PtrSize*2), button: (18+A_PtrSize*2)}, uRawInput
-		
+
 		static axes := {x: 1, y: 2}
 
 		Critical
@@ -199,7 +199,7 @@ class RollMouse {
 		}
 
 		moved := {x: 0, y: 0}
-		
+
 		for axis in axes {
 			obj := {}
 			obj.delta_move := NumGet(&uRawInput, offsets[axis], "Int")
@@ -209,7 +209,7 @@ class RollMouse {
 			if (obj.abs_delta_move >= this.MoveThreshold[axis]){
 				moved[axis] := 1
 			}
-			
+
 			this.UpdateHistory(axis, obj)
 		}
 
@@ -221,7 +221,7 @@ class RollMouse {
 		}
 
 	}
-	
+
 	UpdateHistory(axis, obj){
 		this.History[axis].InsertAt(1, obj)
 		; Enforce max number of entries
@@ -230,17 +230,17 @@ class RollMouse {
 			this.History[axis].RemoveAt(max, max - this.MOVE_BUFFER_SIZE)
 		}
 	}
-	
+
 	; A timeout occurred - Perform a roll
 	DoRoll(){
 		static axes := {x: 1, y: 2}
-		
+
 		;s := ""
-		
+
 		if (this.State != this.STATE_ROLLING){
 			; If roll has just started, calculate roll vector from movement history
 			this.LastMove := {x: 0, y: 0}
-			
+
 			for axis in axes {
 				;s .= axis ": "
 				trend := 0
@@ -268,7 +268,7 @@ class RollMouse {
 				this.LastMove[axis] := round(this.LastMove[axis] * this.MoveFactor[axis])
 			}
 		}
-		
+
 		if (this.LastMove.x = 0 && this.LastMove.y = 0){
 			return
 		}
@@ -290,9 +290,9 @@ class RollMouse {
 			; Wait for a bit (allow real mouse movement to be detected, which will turn off roll)
 			Sleep % this.RollFreq
 		}
-		
+
 	}
-	
+
 	ApplyFriction(value, Friction){
 		if (value < 0){
 			was_negative := true
@@ -305,21 +305,21 @@ class RollMouse {
 			value *= -1
 		return value
 	}
-	
+
 	InitHistory(){
 		this.History := {x: [], y: []}
 	}
-	
+
 	ChangeState(newstate){
 		fn := this.TimeOutFunc
 		if (this.State != newstate){
 			;OutputDebug, % "Changing State to : " this.StateNames[newstate]
 			this.State := newstate
 		}
-		
+
 		; DO NOT return if this.State == newstate!
 		; We need to reset the timer!
-		
+
 		if (this.State = this.STATE_UNDER_THRESH){
 			; Kill the timer
 			SetTimer % fn, Off
