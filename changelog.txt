@@ -25,3 +25,7 @@
 
 1.0.8 - 23rd Nov 2017
 + Added "Friction" option to make Rolls tail off
+
+1.0.9 - 17th Nov 2024
++ Point auto-update to Github
++ Recompile for AHK 1.1.37.2
